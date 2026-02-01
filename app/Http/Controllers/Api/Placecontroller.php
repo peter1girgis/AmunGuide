@@ -9,17 +9,19 @@ use App\Models\User_activities;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * PlaceController - Optional Authentication
+ *
+ * ✅ جميع الـ GET endpoints متاحة للـ guest
+ * ✅ لكن لو user مسجل → تسجيل النشاط
+ */
 class PlaceController extends Controller
 {
     /**
      * GET /api/v1/places
      *
-     * قائمة الأماكن مع الـ Pagination
-     *
-     * Query Parameters:
-     * - page: 1 (default)
-     * - per_page: 15 (default)
-     * - sort: trending, rating, newest (optional)
+     * ✅ متاح للـ guest والـ authenticated users
+     * ✅ لو authenticated → track activity
      */
     public function index(Request $request): JsonResponse
     {
@@ -63,11 +65,26 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/{id}
      *
-     * تفاصيل مكان معين
+     * ✅ متاح للـ guest والـ authenticated users
+     * ✅ لو authenticated → track visit activity
      */
-    public function show(Places $place): JsonResponse
+    public function show(Places $place, Request $request): JsonResponse
     {
         try {
+            // ✅ Track user activity ONLY إذا كان مسجل دخول
+            if (auth('sanctum')->check()) {
+                User_activities::create([
+                    'user_id' => auth('sanctum')->id(),
+                    'activity_type' => 'visit',
+                    'place_id' => $place->id,
+                    'details' => ([
+                        'place_title' => $place->title,
+                        'place_price' => $place->ticket_price,
+                        'ip_address' => $request->ip(),
+                    ]),
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => new PlaceResource($place),
@@ -85,10 +102,11 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/search
      *
-     * البحث عن أماكن
+     * ✅ متاح للـ guest والـ authenticated users
+     * ✅ لو authenticated → track search activity
      *
      * Query Parameters:
-     * - q: search query (min 3 chars) - مطلوب
+     * - q: search query (min 3 chars)
      */
     public function search(Request $request): JsonResponse
     {
@@ -102,11 +120,38 @@ class PlaceController extends Controller
                 ], 400);
             }
 
+            // 1. 💡 تركة: تنفيذ الـ Query أولاً قبل تسجيل النشاط
+            // لكي نعرف ما هي "الكلمة الكاملة" التي وجدها النظام
             $places = Places::query()
                 ->where('title', 'like', "%{$query}%")
                 ->orWhere('description', 'like', "%{$query}%")
                 ->latest('created_at')
                 ->paginate($request->get('per_page', 15));
+
+            // 2. 💡 تركة: التحقق من وجود نتائج + تسجيل النشاط الذكي
+            // لو المستخدم كتب "Pyra" وظهرت نتائج، أول نتيجة غالباً هي الأقرب (مثل Pyramids)
+            if ($places->isNotEmpty() && auth('sanctum')->check()) {
+
+                // نأخذ عنوان أول نتيجة كـ "كلمة مستهدفة كاملة"
+                $fullMatchedTerm = $places->first()->title;
+
+                User_activities::create([
+                    'user_id' => auth('sanctum')->id(),
+                    'activity_type' => 'search',
+
+                    // 💡 تركة: خزن الكلمة الكاملة في الحقل الأساسي للتحليل السريع
+                    'search_query' => $fullMatchedTerm,
+
+                    'details' => [
+                        // خزن ما كتبه المستخدم فعلياً للمقارنة مستقبلاً
+                        'user_typed_this' => $query,
+                        'actual_match' => $fullMatchedTerm,
+                        'results_count' => $places->total(),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ],
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -115,15 +160,18 @@ class PlaceController extends Controller
                     'total' => $places->total(),
                     'per_page' => $places->perPage(),
                     'current_page' => $places->currentPage(),
+                    'last_page' => $places->lastPage(), // 💡 تركة: أضف الـ last_page لتسهيل عمل الـ Frontend
                     'has_more' => $places->hasMorePages(),
                 ]
             ]);
 
         } catch (\Throwable $e) {
-            \Log::error('Search failed', ['error' => $e->getMessage()]);
+            // 💡 تركة: دائماً سجل الخطأ مع الـ Stack Trace في الـ Log للمطورين
+            \Log::error('Search failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Search failed.',
+                'message' => 'Something went wrong on our side.',
             ], 500);
         }
     }
@@ -131,7 +179,7 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/trending
      *
-     * أكثر الأماكن شهرة (أحدث)
+     * ✅ متاح للـ guest والـ authenticated users
      */
     public function trending(): JsonResponse
     {
@@ -158,7 +206,8 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/filter
      *
-     * فلترة متقدمة للأماكن
+     * ✅ متاح للـ guest والـ authenticated users
+     * ✅ لو authenticated → track filter activity
      *
      * Query Parameters:
      * - min_price: 0
@@ -168,6 +217,27 @@ class PlaceController extends Controller
     public function filter(Request $request): JsonResponse
     {
         try {
+            // ✅ جمع معايير الـ Filter
+            $filterCriteria = [
+                'min_price' => $request->get('min_price'),
+                'max_price' => $request->get('max_price'),
+                'sort' => $request->get('sort'),
+            ];
+
+            // ✅ Track filter activity ONLY إذا كان مسجل دخول
+            if (auth('sanctum')->check()) {
+                User_activities::create([
+                    'user_id' => auth('sanctum')->id(),
+                    'activity_type' => 'search', // نستخدم search للفلتر أيضاً
+                    'details' => ([
+                        'filter_type' => 'places_filter',
+                        'criteria' => array_filter($filterCriteria),
+                        'ip_address' => $request->ip(),
+                    ]),
+                ]);
+            }
+
+            // ✅ Build query with filters
             $places = Places::query()
                 ->when(
                     $request->get('min_price'),
@@ -198,6 +268,7 @@ class PlaceController extends Controller
                     'total' => $places->total(),
                     'per_page' => $places->perPage(),
                     'current_page' => $places->currentPage(),
+                    'has_more' => $places->hasMorePages(),
                 ]
             ]);
 
@@ -213,27 +284,17 @@ class PlaceController extends Controller
     /**
      * POST /api/v1/places
      *
-     * إنشاء مكان جديد (Admin فقط)
-     *
-     * Multipart/form-data:
-     * - title: string (required, unique)
-     * - description: string (required, min:10)
-     * - ticket_price: number (required, min:0)
-     * - rating: number (optional, 0-5)
-     * - image: file (optional, image)
+     * ✅ Admin only (محمي بـ middleware)
      */
     public function store(Request $request): JsonResponse
     {
-        // ✅ Check authorization - Admin only
-        if (!auth()->check() || auth()->user()->role !== 'admin') {
+        if(!auth('sanctum')->user() || auth('sanctum')->user()->role !== 'admin'){
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Admin access required.',
+                'message' => 'Unauthorized | Only Admin can access .',
             ], 403);
         }
-
         try {
-            // ✅ Validate input
             $validated = $request->validate([
                 'title' => 'required|string|max:255|unique:places,title',
                 'description' => 'required|string|min:10|max:5000',
@@ -242,21 +303,18 @@ class PlaceController extends Controller
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
-            // ✅ Auto-generate slug
             $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']);
 
-            // ✅ Handle image upload
             if ($request->hasFile('image')) {
                 $path = $request->file('image')->store('places', 'public');
                 $validated['image'] = $path;
             }
 
-            // ✅ Create place
             $place = Places::create($validated);
 
             \Log::info('New place created', [
                 'place_id' => $place->id,
-                'user_id' => auth()->id(),
+                'user_id' => auth('sanctum')->id(),
             ]);
 
             return response()->json([
@@ -283,21 +341,11 @@ class PlaceController extends Controller
     /**
      * PUT /api/v1/places/{id}
      *
-     * تحديث مكان (Admin فقط)
+     * ✅ Admin only (محمي بـ middleware)
      */
     public function update(Request $request, Places $place): JsonResponse
     {
-        // ✅ Check authorization
-        
-        if (!auth()->check() || auth()->user()->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized. Admin access required.',
-            ], 403);
-        }
-
         try {
-            // ✅ Validate input
             $validated = $request->validate([
                 'title' => 'sometimes|string|max:255|unique:places,title,' . $place->id,
                 'description' => 'sometimes|string|min:10|max:5000',
@@ -306,14 +354,11 @@ class PlaceController extends Controller
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
-            // ✅ Auto-generate slug if title changed
             if (isset($validated['title'])) {
                 $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']);
             }
 
-            // ✅ Handle image update
             if ($request->hasFile('image')) {
-                // Delete old image
                 if ($place->image) {
                     \Storage::disk('public')->delete($place->image);
                 }
@@ -321,7 +366,6 @@ class PlaceController extends Controller
                 $validated['image'] = $path;
             }
 
-            // ✅ Update place
             $place->update($validated);
 
             \Log::info('Place updated', ['place_id' => $place->id]);
@@ -350,25 +394,15 @@ class PlaceController extends Controller
     /**
      * DELETE /api/v1/places/{id}
      *
-     * حذف مكان (Admin فقط)
+     * ✅ Admin only (محمي بـ middleware)
      */
     public function destroy(Places $place): JsonResponse
     {
-        // ✅ Check authorization
-        if (!auth()->check() || auth()->user()->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized. Admin access required.',
-            ], 403);
-        }
-
         try {
-            // ✅ Delete image
             if ($place->image) {
                 \Storage::disk('public')->delete($place->image);
             }
 
-            // ✅ Delete place
             $place->delete();
 
             \Log::info('Place deleted', ['place_id' => $place->id]);
