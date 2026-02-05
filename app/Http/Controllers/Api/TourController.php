@@ -7,10 +7,10 @@ use App\Http\Resources\TourResource;
 use App\Http\Requests\StoreTourRequest;
 use App\Http\Requests\UpdateTourRequest;
 use App\Http\Requests\FilterTourRequest;
-use App\Models\Tour;
+
 use App\Models\Tours;
 use App\Models\User_activities;
-use App\Models\UserActivity;
+
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Controllers\Api\CommentsController;
+use App\Http\Controllers\Api\LikesController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -166,14 +168,170 @@ Route::prefix('v1')->group(function () {
         Route::get('tours/{tour_id}/bookings', [TourController::class, 'getTourBookings'])
             ->name('tours.bookings');
     });
+    // ════════════════════════════════════════════════════════════
+    // 💬 COMMENTS ENDPOINTS
+    // ════════════════════════════════════════════════════════════
 
+    /**
+     * GET /api/v1/comments/{type}/{id}
+     * الحصول على جميع التعليقات لـ موضوع معين
+     * type: tours, places, plans ---------------------------------- Done
+     * id: معرف الموضوع
+     */
+    Route::get('comments/{commentableType}/{commentableId}',
+        [CommentsController::class, 'index'])
+        ->name('comments.index')
+        ->where('commentableType', 'tours|places|plans');
+
+    /**
+     * GET /api/v1/{type}/{id}/comments ------------------------------- Done
+     *  بديل: الحصول على التعليقات (نفس الوظيفة)
+     */
+    Route::get('{commentableType}/{commentableId}/comments',
+        [CommentsController::class, 'index'])
+        ->where('commentableType', 'tours|places|plans');
+
+    /**
+     * GET /api/v1/{type}/{id}/comments/count ---------------------------------- Done
+     * عد التعليقات
+     */
+    Route::get('{commentableType}/{commentableId}/comments/count',
+        [CommentsController::class, 'count'])
+        ->where('commentableType', 'tours|places|plans');
+
+    /**
+     * GET /api/v1/comments/{id} ---------------------------------- Done
+     * الحصول على تعليق واحد
+     */
+    Route::get('comments/{comment}', [CommentsController::class, 'show'])
+        ->name('comments.show');
+
+    /**
+     * GET /api/v1/user/{userId}/comments -------------------------  Done
+     * جميع تعليقات مستخدم معين
+     */
+    Route::get('user/{userId}/comments', [CommentsController::class, 'userComments'])
+        ->name('comments.user');
+
+    // Protected comment endpoints (require authentication)
+    Route::middleware('auth:sanctum')->group(function () {
+        /**
+         * POST /api/v1/comments
+         * إضافة تعليق
+         * Body: {
+         *   "content": "محتوى التعليق",
+         *   "commentable_type": "tours|places|plans",
+         *   "commentable_id": 1
+         * } -------------------------------------- Done
+         */
+        Route::post('comments', [CommentsController::class, 'store'])
+            ->name('comments.store');
+
+        /**
+         * POST /api/v1/{type}/{id}/comments
+         * إضافة تعليق مباشرة على موضوع (أسهل)
+         * Body: { "content": "محتوى التعليق" } --------------------------------------- Done
+         */
+        Route::post('{commentableType}/{commentableId}/comments',
+            [CommentsController::class, 'storeOnResource'])
+            ->where('commentableType', 'tours|places|plans');
+
+        /**
+         * PUT /api/v1/comments/{id}
+         * تحديث التعليق (owner فقط)
+         * Body: { "content": "محتوى جديد" } ---------------------------------- Done
+         */
+        Route::put('comments/{comment}', [CommentsController::class, 'update'])
+            ->name('comments.update');
+
+        /**
+         * DELETE /api/v1/comments/{id}
+         * حذف التعليق (owner أو admin) ---------------------------------- Done
+         */
+        Route::delete('comments/{comment}', [CommentsController::class, 'destroy'])
+            ->name('comments.destroy');
+    });
+
+    // ════════════════════════════════════════════════════════════
+    // ❤️ LIKES ENDPOINTS
+    // ════════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/v1/{type}/{id}/likes
+     * الحصول على جميع التقييمات لـ موضوع معين
+     * type: tours, places, plans     ------------------------------ Done
+     */
+    Route::get('{likeableType}/{likeableId}/likes',
+        [LikesController::class, 'index'])
+        ->where('likeableType', 'tours|places|plans');
+
+    /**
+     * GET /api/v1/{type}/{id}/likes/count
+     * عد التقييمات + هل المستخدم قيّم؟  ------------------------------ Done
+     */
+    Route::get('{likeableType}/{likeableId}/likes/count',
+        [LikesController::class, 'count'])
+        ->where('likeableType', 'tours|places|plans');
+
+    /**
+     * GET /api/v1/user/{userId}/likes   ----------------------------------------------  Done
+     * جميع التقييمات لـ مستخدم معين
+     */
+    Route::get('user/{userId}/likes', [LikesController::class, 'userLikes'])
+        ->name('likes.user');
+
+    // Protected like endpoints (require authentication)
+    Route::middleware('auth:sanctum')->group(function () {
+        /**
+         * POST /api/v1/likes
+         * إضافة تقييم (Like)
+         * Body: {
+         *   "likeable_type": "tours|places|plans",
+         *   "likeable_id": 1
+         * } --------------------------------------- Done
+         */
+        Route::post('likes', [LikesController::class, 'store'])
+            ->name('likes.store');
+
+        /**
+         * POST /api/v1/likes/toggle
+         * تقييم أو إزالة التقييم (أسهل للـ frontend)
+         * Body: {
+         *   "likeable_type": "tours|places|plans",
+         *   "likeable_id": 1
+         * } ----------------------------------------------------------Done
+         */
+        Route::post('likes/toggle', [LikesController::class, 'toggle'])
+            ->name('likes.toggle');
+
+        /**
+         * DELETE /api/v1/likes/{id}
+         * إزالة التقييم   --------------------------------------- Done
+         */
+        Route::delete('likes/{like}', [LikesController::class, 'destroy'])
+            ->name('likes.destroy');
+    });
+    /**
+     * DELETE /api/v1/{type}/{id}/likes
+     * إزالة التقييم من موضوع معين ---------------------------------- Done
+     */
+    Route::delete('{likeableType}/{likeableId}/likes',
+        [LikesController::class, 'removeFromResource'])
+        ->where('likeableType', 'tours|places|plans');
 
 });
 
 Route::prefix('v1/analysis')->group(function () {
-
+    /**
+     * POST /api/v1/analysis/user_activity
+     * give analysis data for a single user  ------------------------------  Done
+     */
     Route::post('/user_activity', [AnalysisController::class, 'getMyData'])
         ->name('analysis.user.single');
+    /**
+     * GET /api/v1/analysis/users-all
+     * give analysis data for all users  ------------------------------  Done
+     */
 
     Route::get('/users-all', [AnalysisController::class, 'getAllUsersData'])
         ->name('analysis.users.global');
