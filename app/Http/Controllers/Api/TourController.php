@@ -166,6 +166,7 @@ class TourController extends Controller
                             'user_agent' => $request->userAgent(),
                         ],
                     ]);
+                    \Log::info('User searched tours', ['user_id' => auth('sanctum')->id(), 'search_query' => $query]);
                 }
 
             return response()->json([

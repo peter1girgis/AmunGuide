@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -166,6 +167,16 @@ Route::prefix('v1')->group(function () {
             ->name('tours.bookings');
     });
 
+
+});
+
+Route::prefix('v1/analysis')->group(function () {
+
+    Route::post('/user_activity', [AnalysisController::class, 'getMyData'])
+        ->name('analysis.user.single');
+
+    Route::get('/users-all', [AnalysisController::class, 'getAllUsersData'])
+        ->name('analysis.users.global');
 
 });
 
