@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\CommentsController;
 use App\Http\Controllers\Api\LikesController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\TourBookingController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,7 +18,7 @@ use App\Http\Controllers\Api\TourController;
 |
 | Here is where you can register API routes for your application. These
 | routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
+| be assigned to the "api" middleware group. Make something great! =>
 |
 */
 
@@ -362,6 +364,401 @@ Route::prefix('v1/analysis')->group(function () {
  *    - sort: for sorting
  *    - search: for searching
  */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * PAYMENT ROUTES
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * نظام إدارة الدفعات الكامل
+ *
+ * Protected Routes: تتطلب Sanctum Authentication
+ * Admin Routes: تتطلب role = 'admin'
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+Route::prefix('v1')->group(function () {
+
+    /**
+     * ─────────────────────────────────────────────────────────────────
+     * PUBLIC/GUEST ROUTES (لا تتطلب Authentication)
+     * ─────────────────────────────────────────────────────────────────
+     */
+
+    // لا توجد routes عامة للدفعات - كلها محمية
+
+
+    /**
+     * ─────────────────────────────────────────────────────────────────
+     * AUTHENTICATED USER ROUTES
+     * ─────────────────────────────────────────────────────────────────
+     */
+
+    Route::middleware('auth:sanctum')->group(function () {
+
+        /**
+         * دفعات المستخدم الحالي
+         */
+        // GET /api/v1/payments/my-payments - عرض جميع دفعات المستخدم الحالي
+        Route::get('payments/my-payments', [PaymentController::class, 'myPayments'])
+            ->name('payments.my-payments');
+
+        /**
+         * إنشاء دفعة جديدة
+         */
+        // POST /api/v1/payments - إنشاء دفعة جديدة
+        Route::post('payments', [PaymentController::class, 'store'])
+            ->name('payments.store');
+
+        /**
+         * عرض دفعة واحدة
+         */
+        // GET /api/v1/payments/{id} - عرض تفاصيل دفعة واحدة
+        Route::get('payments/{id}', [PaymentController::class, 'show'])
+            ->name('payments.show')
+            ->where('id', '[0-9]+');
+
+        /**
+         * تحديث الدفعة
+         */
+        // PUT/PATCH /api/v1/payments/{id} - تحديث دفعة (المبلغ للمستخدم، الحالة للـ Admin)
+        Route::match(['put', 'patch'], 'payments/{payment}', [PaymentController::class, 'update'])
+            ->name('payments.update');
+
+        /**
+         * حذف الدفعة
+         */
+        // DELETE /api/v1/payments/{id} - حذف دفعة (معلقة فقط للمستخدم، أي دفعة للـ Admin)
+        Route::delete('payments/{id}', [PaymentController::class, 'destroy'])
+            ->name('payments.destroy');
+
+
+        /**
+         * ─────────────────────────────────────────────────────────────────
+         * ADMIN ONLY ROUTES
+         * ─────────────────────────────────────────────────────────────────
+         */
+
+        // Route::middleware('role:admin')->group(function () {
+
+            /**
+             * عرض جميع الدفعات
+             */
+            // GET /api/v1/payments - عرض جميع الدفعات مع الفلاتر
+            Route::get('payments', [PaymentController::class, 'index'])
+                ->name('payments.index');
+
+            /**
+             * إحصائيات الدفعات
+             */
+            // GET /api/v1/payments/statistics - إحصائيات شاملة للدفعات
+            Route::get('payments/statistics', [PaymentController::class, 'statistics'])
+                ->name('payments.statistics');
+
+            /**
+             * الموافقة/الرفض
+             */
+            // POST /api/v1/payments/{id}/approve - الموافقة على دفعة
+            Route::post('payments/{id}/approve', [PaymentController::class, 'approve'])
+                ->name('payments.approve');
+
+            // POST /api/v1/payments/{id}/reject - رفض دفعة
+            Route::post('payments/{id}/reject', [PaymentController::class, 'reject'])
+                ->name('payments.reject');
+
+            /**
+             * الموافقة الجماعية
+             */
+            // POST /api/v1/payments/bulk-approve - الموافقة على عدة دفعات
+            Route::post('payments/bulk-approve', [PaymentController::class, 'bulkApprove'])
+                ->name('payments.bulk-approve');
+
+            /**
+             * دفعات مستخدم معين
+             */
+            // GET /api/v1/users/{userId}/payments - عرض دفعات مستخدم معين
+            Route::get('users/{userId}/payments', [PaymentController::class, 'userPayments'])
+                ->name('users.payments');
+        });
+    });
+// });
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * ROUTE EXAMPLES & USAGE
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * PUBLIC ENDPOINTS:
+ * -----------------
+ * لا يوجد - جميع الـ endpoints محمية
+ *
+ *
+ * AUTHENTICATED USER ENDPOINTS:
+ * -----------------------------
+ *
+ * 1. عرض دفعاتي:
+ *    GET /api/v1/payments/my-payments
+ *    GET /api/v1/payments/my-payments?status=pending
+ *    GET /api/v1/payments/my-payments?per_page=20
+ *
+ * 2. إنشاء دفعة:
+ *    POST /api/v1/payments
+ *    Body: {
+ *      "amount": 150.00,
+ *      "payable_type": "tour_bookings",
+ *      "payable_id": 5
+ *    }
+ *
+ * 3. عرض دفعة واحدة:
+ *    GET /api/v1/payments/1
+ *
+ * 4. تحديث دفعة:
+ *    PUT /api/v1/payments/1
+ *    Body: {
+ *      "amount": 175.00
+ *    }
+ *
+ * 5. حذف دفعة:
+ *    DELETE /api/v1/payments/1
+ *
+ *
+ * ADMIN ONLY ENDPOINTS:
+ * ---------------------
+ *
+ * 1. عرض جميع الدفعات:
+ *    GET /api/v1/payments
+ *    GET /api/v1/payments?status=pending
+ *    GET /api/v1/payments?payable_type=tour_bookings
+ *    GET /api/v1/payments?user_id=5
+ *    GET /api/v1/payments?from_date=2025-01-01&to_date=2025-02-01
+ *
+ * 2. إحصائيات الدفعات:
+ *    GET /api/v1/payments/statistics
+ *
+ * 3. الموافقة على دفعة:
+ *    POST /api/v1/payments/1/approve
+ *
+ * 4. رفض دفعة:
+ *    POST /api/v1/payments/1/reject
+ *
+ * 5. الموافقة الجماعية:
+ *    POST /api/v1/payments/bulk-approve
+ *    Body: {
+ *      "payment_ids": [1, 2, 3, 4]
+ *    }
+ *
+ * 6. دفعات مستخدم معين:
+ *    GET /api/v1/users/5/payments
+ *
+ * 7. تحديث حالة دفعة (Admin):
+ *    PUT /api/v1/payments/1
+ *    Body: {
+ *      "status": "approved",
+ *      "amount": 200.00
+ *    }
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * TOUR BOOKING ROUTES
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * نظام إدارة حجوزات الرحلات الكامل
+ *
+ * السيناريو:
+ * 1. السائح يحجز الرحلة → POST /tour-bookings (status: pending)
+ * 2. السائح يدفع → POST /payments (مربوط بالـ booking_id)
+ * 3. Admin يوافق على الدفع → POST /payments/{id}/approve
+ *    → تلقائياً يتم تحديث الـ booking status إلى approved
+ *
+ * Protected Routes: تتطلب Sanctum Authentication
+ * Guide/Admin Routes: تتطلب role = 'guide' or 'admin'
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+Route::prefix('v1')->group(function () {
+
+    /**
+     * ─────────────────────────────────────────────────────────────────
+     * AUTHENTICATED USER ROUTES
+     * ─────────────────────────────────────────────────────────────────
+     */
+
+    Route::middleware('auth:sanctum')->group(function () {
+
+        /**
+         * حجوزاتي (للسائح)
+         */
+        // GET /api/v1/tour-bookings/my-bookings - عرض جميع حجوزاتي
+        Route::get('tour-bookings/my-bookings', [TourBookingController::class, 'myBookings'])
+            ->name('tour-bookings.my-bookings');
+
+        /**
+         * الإحصائيات
+         */
+        // GET /api/v1/tour-bookings/statistics - إحصائيات حسب الدور
+        Route::get('tour-bookings/statistics', [TourBookingController::class, 'statistics'])
+            ->name('tour-bookings.statistics');
+
+        /**
+         * إنشاء حجز جديد (الخطوة 1)
+         */
+        // POST /api/v1/tour-bookings - إنشاء حجز جديد (tourist only)
+        Route::post('tour-bookings', [TourBookingController::class, 'store'])
+            ->name('tour-bookings.store');
+
+        /**
+         * عرض جميع الحجوزات (حسب الصلاحية)
+         */
+        // GET /api/v1/tour-bookings - عرض الحجوزات حسب الدور
+        Route::get('tour-bookings', [TourBookingController::class, 'index'])
+            ->name('tour-bookings.index');
+
+        /**
+         * عرض حجز واحد
+         */
+        // GET /api/v1/tour-bookings/{id} - عرض تفاصيل حجز واحد
+        Route::get('tour-bookings/{id}', [TourBookingController::class, 'show'])
+            ->name('tour-bookings.show');
+
+        /**
+         * تحديث الحجز
+         */
+        // PUT/PATCH /api/v1/tour-bookings/{id} - تحديث حجز
+        Route::match(['put', 'patch'], 'tour-bookings/{booking}', [TourBookingController::class, 'update'])
+            ->name('tour-bookings.update');
+
+        /**
+         * إلغاء/حذف الحجز
+         */
+        // DELETE /api/v1/tour-bookings/{id} - إلغاء حجز
+        Route::delete('tour-bookings/{id}', [TourBookingController::class, 'destroy'])
+            ->name('tour-bookings.destroy');
+
+        /**
+         * عرض حجوزات رحلة معينة (للمرشد/Admin)
+         */
+        // GET /api/v1/tours/{tourId}/bookings - عرض حجوزات رحلة معينة
+        Route::get('tours/{tourId}/bookings', [TourBookingController::class, 'tourBookings'])
+            ->name('tours.bookings');
+
+        /**
+         * الموافقة والرفض (للمرشد/Admin)
+         */
+        // POST /api/v1/tour-bookings/{id}/approve - الموافقة على حجز
+        Route::post('tour-bookings/{id}/approve', [TourBookingController::class, 'approve'])
+            ->name('tour-bookings.approve');
+
+        // POST /api/v1/tour-bookings/{id}/reject - رفض حجز
+        Route::post('tour-bookings/{id}/reject', [TourBookingController::class, 'reject'])
+            ->name('tour-bookings.reject');
+    });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * ROUTE EXAMPLES & USAGE
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * COMPLETE BOOKING FLOW (السيناريو الكامل):
+ * ------------------------------------------
+ *
+ * الخطوة 1: إنشاء الحجز
+ * POST /api/v1/tour-bookings
+ * Body: {
+ *   "tour_id": 5,
+ *   "participants_count": 3
+ * }
+ * Response: {
+ *   "success": true,
+ *   "message": "Booking created successfully. Please proceed to payment.",
+ *   "data": { booking details },
+ *   "next_step": {
+ *     "action": "create_payment",
+ *     "booking_id": 10,
+ *     "amount": 450.00
+ *   }
+ * }
+ *
+ * الخطوة 2: إنشاء الدفعة
+ * POST /api/v1/payments
+ * Body: {
+ *   "amount": 450.00,
+ *   "payable_type": "tour_bookings",
+ *   "payable_id": 10
+ * }
+ * Response: {
+ *   "success": true,
+ *   "message": "Payment created successfully. Waiting for admin approval.",
+ *   "next_step": {
+ *     "action": "wait_for_approval"
+ *   }
+ * }
+ *
+ * الخطوة 3: Admin يوافق على الدفع
+ * POST /api/v1/payments/{payment_id}/approve
+ * Response: {
+ *   "success": true,
+ *   "message": "Payment approved successfully. Booking has been confirmed.",
+ *   "booking_updated": true
+ * }
+ *
+ * الآن الـ booking status = approved تلقائياً!
+ *
+ *
+ * OTHER ENDPOINTS:
+ * ----------------
+ *
+ * 1. عرض حجوزاتي:
+ *    GET /api/v1/tour-bookings/my-bookings
+ *    GET /api/v1/tour-bookings/my-bookings?status=pending
+ *
+ * 2. عرض جميع الحجوزات (Admin):
+ *    GET /api/v1/tour-bookings
+ *    GET /api/v1/tour-bookings?status=approved
+ *    GET /api/v1/tour-bookings?tour_id=5
+ *
+ * 3. عرض حجوزات رحلاتي (Guide):
+ *    GET /api/v1/tour-bookings (auto-filtered for guide's tours)
+ *
+ * 4. عرض حجز واحد:
+ *    GET /api/v1/tour-bookings/10
+ *
+ * 5. تحديث عدد المشاركين (Tourist - pending only):
+ *    PUT /api/v1/tour-bookings/10
+ *    Body: {
+ *      "participants_count": 5
+ *    }
+ *
+ * 6. تحديث حالة الحجز (Guide/Admin):
+ *    PUT /api/v1/tour-bookings/10
+ *    Body: {
+ *      "status": "approved"
+ *    }
+ *
+ * 7. إلغاء حجز (Tourist - pending & no approved payment):
+ *    DELETE /api/v1/tour-bookings/10
+ *
+ * 8. الموافقة على حجز (Guide/Admin - with approved payment):
+ *    POST /api/v1/tour-bookings/10/approve
+ *
+ * 9. رفض حجز (Guide/Admin):
+ *    POST /api/v1/tour-bookings/10/reject
+ *
+ * 10. عرض حجوزات رحلة معينة (Guide/Admin):
+ *     GET /api/v1/tours/5/bookings
+ *
+ * 11. إحصائيات الحجوزات:
+ *     GET /api/v1/tour-bookings/statistics
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
