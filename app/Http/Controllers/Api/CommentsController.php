@@ -9,6 +9,9 @@ use App\Models\Comments;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\User_activities;
+use Illuminate\Support\Str;
+
 /**
  * CommentsController - إدارة التعليقات
  *
@@ -101,9 +104,26 @@ class CommentsController extends Controller
         // Create comment
         $comment = Comments::create($validated);
 
+        $isPlace = ($validated['commentable_type'] === 'places' || $validated['commentable_type'] === 'App\\Models\\Places');
+        $placeId = $isPlace ? $validated['commentable_id'] : null;
+        $userId = auth('sanctum')->id();
+        User_activities::create([
+            'user_id'       => $userId,
+            'activity_type' => 'comment', // متوافق تماماً مع الـ Migration
+            'place_id'      => $placeId,
+            'details'       => [
+                'action'           => 'added_comment',
+                'comment_id'       => $comment->id,
+                'commentable_type' => $validated['commentable_type'],
+                'commentable_id'   => $validated['commentable_id'],
+                'comment_preview'  => Str::limit($comment->content, 50), // تخزين بداية التعليق للذكرى
+                'ip_address'       => $request->ip(),
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إضافة التعليق بنجاح',
+            'message' => 'Comment added successfully',
             'data' => CommentResource::make($comment->load('user')),
         ], 201); // 201 Created
     }
@@ -114,20 +134,52 @@ class CommentsController extends Controller
      *
      * يمكن فقط للـ owner أو admin التحديث
      */
-    public function update(UpdateCommentRequest $request, Comments $comment): JsonResponse
-    {
-        // Request validates & authorizes automatically
-        $validated = $request->validated();
+    public function update(UpdateCommentRequest $request, $id): JsonResponse
+{
+    // لاحظ أننا لم نعد بحاجة لـ Comments::find($id) لأن لارافيل قام بها بالفعل
 
-        // Update comment
-        $comment->update($validated);
+    $comment = Comments::find($id);
 
+    if (!$comment) {
         return response()->json([
-            'success' => true,
-            'message' => 'تم تحديث التعليق بنجاح',
-            'data' => CommentResource::make($comment->load('user')),
-        ]);
+            'success' => false,
+            'message' => 'Comment NOT found',
+        ], 404);
     }
+
+    $oldContent = $comment->content;
+    $validated = $request->validated();
+    $comment->update($validated);
+
+    // الحصول على المستخدم الحالي (تم التأكد من وجوده في الـ Request)
+    $user = auth('sanctum')->user();
+
+    // تحديد ما إذا كان التعليق يخص مكان (Place)
+    $isPlace = ($comment->commentable_type === 'places' || $comment->commentable_type === 'App\Models\Places');
+    $placeId = $isPlace ? $comment->commentable_id : null;
+
+    // تسجيل النشاط
+    User_activities::create([
+        'user_id'       => $user->id,
+        'activity_type' => 'comment',
+        'place_id'      => $placeId,
+        'details'       => [
+            'action'         => 'updated_comment',
+            'comment_id'     => $comment->id,
+            'resource_type'  => $comment->commentable_type,
+            'resource_id'    => $comment->commentable_id,
+            'old_preview'    => $oldContent ,
+            'new_preview'    => $comment->content,
+            'ip_address'     => $request->ip(),
+        ],
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Comment updated successfully',
+        'data'    => CommentResource::make($comment->load('user')),
+    ]);
+}
 
     /**
      * DELETE /api/v1/comments/{id}

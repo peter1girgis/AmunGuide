@@ -55,6 +55,7 @@ class UpdateTourBookingRequest extends FormRequest
                     'min:1',
                     'max:50',
                 ],
+                'amount' => ['sometimes', 'numeric'],
             ];
         }
 
@@ -66,7 +67,8 @@ class UpdateTourBookingRequest extends FormRequest
                 'integer',
                 'min:1',
                 'max:50',
-            ],
+                ],
+                'amount' => ['sometimes', 'numeric']
         ];
     }
 
@@ -90,9 +92,17 @@ class UpdateTourBookingRequest extends FormRequest
      */
     public function withValidator($validator)
     {
+        if ($this->has('amount')) {
+            $validator->errors()->add(
+                'amount',
+                'Amount cannot be updated directly. It will be calculated automatically based on participants count.'
+            );
+        }
         $validator->after(function ($validator) {
             $booking = $this->route('booking');
             $user = auth('sanctum')->user();
+
+
 
             // لا يمكن تحديث حجز مرفوض
             if ($booking && $booking->isRejected() && $user->role !== 'admin') {
@@ -128,6 +138,10 @@ class UpdateTourBookingRequest extends FormRequest
     protected function prepareForValidation()
     {
         $booking = $this->route('booking');
+        // 1. لو المستخدم بعت amount يدوي، بنشيلها فوراً عشان نضمن إننا اللي هنحسبها
+        if ($this->has('amount')) {
+            $this->offsetUnset('amount');
+        }
 
         // إذا تم تحديث عدد المشاركين، نحسب المبلغ الجديد
         if ($this->has('participants_count') && $booking) {

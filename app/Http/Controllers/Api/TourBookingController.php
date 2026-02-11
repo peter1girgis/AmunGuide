@@ -9,6 +9,7 @@ use App\Http\Resources\TourBookingResource;
 use App\Models\Tour_bookings;
 use App\Models\Tours;
 use App\Models\User;
+use App\Models\User_activities;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -227,6 +228,22 @@ class TourBookingController extends Controller
             // تحميل العلاقات
             $booking->load(['tour.guide', 'tourist']);
 
+            User_activities::create([
+                'user_id'       => auth('sanctum')->id(),
+                'activity_type' => 'plan_creation', // اخترت plan_creation لأنها الأقرب للحجز في الـ Enum الحالي
+                'place_id'      => null, // اتركها null لأن الحجز لـ Tour وليس Place
+                'details'       => [
+                    'action'             => 'tour_booking_created',
+                    'tour_id'            => $booking->tour_id,
+                    'tour_title'         => $booking->tour->title ?? 'N/A',
+                    'booking_id'         => $booking->id,
+                    'participants_count' => $booking->participants_count,
+                    'total_amount'       => $booking->amount,
+                    'status'             => 'pending',
+                    'ip_address'         => $request->ip(),
+                ],
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Booking created successfully. Please proceed to payment.',
@@ -256,9 +273,16 @@ class TourBookingController extends Controller
      */
     public function update(UpdateTourBookingRequest $request, Tour_bookings $booking): JsonResponse
     {
+        // $requestTest = $request;
+
+        // dd($request->all());
         try {
             $validated = $request->validated();
 
+
+            // unset($validated['amount']); // منع تحديث المبلغ مباشرة من هنا
+
+            // dd($validated);
             $booking->update($validated);
             $booking->load(['tour.guide', 'tourist', 'payments']);
 
@@ -304,8 +328,23 @@ class TourBookingController extends Controller
                     'error' => 'unauthorized',
                 ], 403);
             }
+            $bookingData = [
+                'action'        => 'tour_booking_cancelled',
+                'booking_id'    => $booking->id,
+                'tour_id'       => $booking->tour_id,
+                'tour_title'    => $booking->tour->title ?? 'N/A',
+                'amount_refunded' => $booking->amount,
+                'cancelled_by'  => $user->role, // هل الأدمن هو من ألغى أم المستخدم؟
+                'ip_address'    => request()->ip(),
+            ];
 
             $booking->delete();
+            User_activities::create([
+                'user_id'       => $user->id,
+                'activity_type' => 'plan_creation', // القيمة المتاحة في الـ enum
+                'place_id'      => null,
+                'details'       => $bookingData,
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -496,8 +535,9 @@ class TourBookingController extends Controller
             } else {
                 // إحصائيات السائح
                 return response()->json([
-                    'success' => true,
-                    'data' => Tour_bookings::getTouristBookingStats($user->id),
+                    'success' => false,
+                    'message' => 'Tourists should use /my-bookings endpoint for their statistics',
+                    'error' => 'use_my_bookings',
                 ]);
             }
 
@@ -550,6 +590,19 @@ class TourBookingController extends Controller
                 ->latest()
                 ->paginate(15);
 
+                User_activities::create([
+                    'user_id'       => $user->id,
+                    'activity_type' => 'visit',
+                    'place_id'      => null,
+                    'details'       => [
+                        'action'        => 'view_tour_bookings',
+                        'tour_id'       => $tour->id,
+                        'tour_title'    => $tour->title,
+                        'user_role'     => $user->role,
+                        'results_count' => $bookings->total(),
+                        'ip_address'    => request()->ip(),
+                    ],
+                ]);
             return response()->json([
                 'success' => true,
                 'tour' => [

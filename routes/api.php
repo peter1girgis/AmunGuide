@@ -167,8 +167,8 @@ Route::prefix('v1')->group(function () {
          * GET /api/v1/tours/{tour_id}/bookings
          * حجوزات جولة (Guide owner)
          */
-        Route::get('tours/{tour_id}/bookings', [TourController::class, 'getTourBookings'])
-            ->name('tours.bookings');
+        // Route::get('tours/{tour_id}/bookings', [TourController::class, 'getTourBookings'])
+        //     ->name('tours.bookings');
     });
     // ════════════════════════════════════════════════════════════
     // 💬 COMMENTS ENDPOINTS
@@ -243,7 +243,7 @@ Route::prefix('v1')->group(function () {
          * تحديث التعليق (owner فقط)
          * Body: { "content": "محتوى جديد" } ---------------------------------- Done
          */
-        Route::put('comments/{comment}', [CommentsController::class, 'update'])
+        Route::put('comments/{id}', [CommentsController::class, 'update'])
             ->name('comments.update');
 
         /**

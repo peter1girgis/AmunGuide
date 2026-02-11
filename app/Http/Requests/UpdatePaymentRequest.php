@@ -12,7 +12,8 @@ class UpdatePaymentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $payment = $this->route('payment');
+        $paymentId = $this->route('payment');
+        $payment = \App\Models\Payments::find($paymentId);
         $user = auth('sanctum')->user();
 
         if (!$user || !$payment) {
@@ -111,7 +112,9 @@ class UpdatePaymentRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $payment = $this->route('payment');
+            $paymentId = $this->route('payment');
+            // تأكد من البحث عن الموديل هنا أيضاً
+            $payment = \App\Models\Payments::find($paymentId);
 
             // لا يمكن تحديث دفعة معتمدة أو فاشلة (إلا من Admin)
             if (

@@ -253,6 +253,7 @@ class Tour_bookings extends Model
             ->where('status', 'pending')
             ->exists();
 
+
         return !$hasPendingPayment;
     }
 

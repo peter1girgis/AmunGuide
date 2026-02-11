@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Comments;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -107,41 +108,45 @@ class StoreCommentRequest extends FormRequest
  * ✅ تحديث التعليق فقط بـ content
  * ✅ Authorization (owner فقط)
  */
-class UpdateCommentRequest extends FormRequest
-{
-    /**
-     * التحقق من الصلاحيات
-     * فقط الـ owner أو admin يقدر يعدل
-     */
-    public function authorize(): bool
-    {
-        $comment = $this->route('comment');
+// class UpdateCommentRequest extends FormRequest
+// {
+//     /**
+//      * التحقق من الصلاحيات
+//      * فقط الـ owner أو admin يقدر يعدل
+//      */
+//     public function authorize(): bool
+//     {
+//         $commentId = $this->route('id');
+//         $comment = Comments::find($commentId);
 
-        return auth('sanctum')->check() && (
-            auth('sanctum')->id() === $comment->user_id ||
-            auth('sanctum')->user()->role === 'admin'
-        );
-    }
+//         // لو مش موجود، الـ Controller هيتعامل مع الـ 404، هنا بس بنحمي الـ logic
+//         if (!$comment) return false;
 
-    /**
-     * الـ Validation Rules
-     */
-    public function rules(): array
-    {
-        return [
-            'content' => 'required|string|min:3|max:1000',
-        ];
-    }
+//         return auth('sanctum')->check() && (
+//             auth('sanctum')->id() === $comment->user_id ||
+//             auth('sanctum')->user()->role === 'admin'
+//         );
+//     }
 
-    /**
-     * الرسائل المخصصة
-     */
-    public function messages(): array
-    {
-        return [
-            'content.required' => 'محتوى التعليق مطلوب',
-            'content.min' => 'محتوى التعليق يجب أن يكون 3 أحرف على الأقل',
-            'content.max' => 'محتوى التعليق لا يجب أن يتجاوز 1000 حرف',
-        ];
-    }
-}
+//     /**
+//      * الـ Validation Rules
+//      */
+//     public function rules(): array
+//     {
+//         return [
+//             'content' => 'required|string|min:3|max:1000',
+//         ];
+//     }
+
+//     /**
+//      * الرسائل المخصصة
+//      */
+//     public function messages(): array
+//     {
+//         return [
+//             'content.required' => 'محتوى التعليق مطلوب',
+//             'content.min' => 'محتوى التعليق يجب أن يكون 3 أحرف على الأقل',
+//             'content.max' => 'محتوى التعليق لا يجب أن يتجاوز 1000 حرف',
+//         ];
+//     }
+// }

@@ -9,6 +9,7 @@ use App\Http\Resources\PaymentResource;
 use App\Models\Payment;
 use App\Models\Payments;
 use App\Models\User;
+use App\Models\User_activities;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -276,6 +277,23 @@ class PaymentController extends Controller
                 notes: $validated['notes'] ?? null // الحقل الجديد
             );
 
+            User_activities::create([
+                    'user_id'       => auth('sanctum')->id(),
+                    'activity_type' => 'plan_creation', // الأقرب لعملية إنشاء معاملة
+                    'place_id'      => null,
+                    'details'       => [
+                        'action'         => 'payment_submitted',
+                        'payment_id'     => $payment->id,
+                        'amount'         => $payment->amount,
+                        'payable_type'   => $validated['payable_type'],
+                        'payable_id'     => $payment->payable_id,
+                        'method'         => $payment->payment_method,
+                        'transaction_id' => $payment->transaction_id,
+                        'status'         => 'pending_approval',
+                        'ip_address'     => $request->ip(),
+                    ],
+                ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment created successfully. Waiting for admin approval.',
@@ -299,9 +317,21 @@ class PaymentController extends Controller
      * - المستخدم العادي: يمكنه تحديث المبلغ فقط للدفعات المعلقة
      * - Admin: يمكنه تحديث المبلغ والحالة
      */
-    public function update(UpdatePaymentRequest $request, Payments $payment): JsonResponse
+    public function update(UpdatePaymentRequest $request, $id): JsonResponse
     {
         // dd($request->all());
+        // البحث عن الدفعة يدوياً
+        $payment = Payments::find($id);
+
+        // dd($request);
+
+        // التحقق من وجودها قبل البدء في أي منطق
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment not found',
+            ], 404);
+        }
         try {
             $validated = $request->validated();
 
@@ -318,6 +348,7 @@ class PaymentController extends Controller
             }
 
             // تحديث البيانات في الداتابيز (بما فيها الحقول الجديدة transaction_id, notes, etc)
+
             $payment->update($validated);
 
             return response()->json([
@@ -357,13 +388,20 @@ class PaymentController extends Controller
             // التحقق من الصلاحية
             if (
                 $user->role !== 'admin' &&
-                ($payment->payer_id !== $user->id || $payment->status !== 'pending')
+                ($payment->payer_id !== $user->id || $payment->status !== 'pending' || $payment->status !== 'rejected')
             ) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to delete this payment',
                     'error' => 'unauthorized',
                 ], 403);
+            }
+            // --- التعديل المطلوب لفتح الحجز مرة أخرى ---
+            $payable = $payment->payable; // العلاقة Polymorphic
+
+            if ($payable instanceof \App\Models\Tour_bookings) {
+                // نعيد حالة الحجز إلى pending عشان ميثود canCreatePayment ترجع true
+                $payable->update(['status' => 'pending']);
             }
 
             // --- التعديل المطلوب: مسح الصورة من السيرفر قبل حذف السجل ---

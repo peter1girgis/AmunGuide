@@ -7,6 +7,8 @@ use App\Models\Likes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\User_activities;
+
 /**
  * LikesController - إدارة التقييمات (Like)
  *
@@ -71,6 +73,8 @@ class LikesController extends Controller
                             ->where('likeable_id', $validated['likeable_id'])
                             ->first();
 
+
+
         if ($existingLike) {
             return response()->json([
                 'success' => false,
@@ -85,6 +89,18 @@ class LikesController extends Controller
             'user_id' => auth('sanctum')->id(),
             'likeable_type' => $validated['likeable_type'],
             'likeable_id' => $validated['likeable_id'],
+        ]);
+        User_activities::create([
+            'user_id'       => auth('sanctum')->id(),
+            'activity_type' => 'like', // متوفر في الـ Enum الخاص بك
+            'place_id'      => $validated['likeable_type'] === 'places' ? $validated['likeable_id'] : null,
+            'details'       => [
+                'action'        => 'added_like',
+                'resource_type' => $validated['likeable_type'],
+                'resource_id'   => $validated['likeable_id'],
+                'resource_name' => $resource->title ?? $resource->name ?? 'N/A', // محاولة جلب الاسم تلقائياً
+                'ip_address'    => $request->ip(),
+            ],
         ]);
 
         return response()->json([
@@ -118,9 +134,20 @@ class LikesController extends Controller
                 'error' => 'unauthorized',
             ], 403);
         }
-
+        $activityData = [
+            'user_id'       => auth('sanctum')->id(),
+            'activity_type' => 'like',
+            'place_id'      => $like->likeable_type === 'places' ? $like->likeable_id : null,
+            'details'       => [
+                'action'        => 'removed_like', // توضيح أن العملية هي "إلغاء إعجاب"
+                'resource_type' => $like->likeable_type,
+                'resource_id'   => $like->likeable_id,
+                'ip_address'    => request()->ip(),
+            ],
+        ];
 
         $like->delete();
+        User_activities::create($activityData);
 
         return response()->json([
             'success' => true,
@@ -289,6 +316,7 @@ class LikesController extends Controller
                 'error' => 'unauthenticated',
             ], 401);
         }
+        $userId = auth('sanctum')->id();
 
         // Validate input
         $validated = $request->validate([
@@ -305,6 +333,18 @@ class LikesController extends Controller
         if ($existingLike) {
             // Remove like (Unlike)
             $existingLike->delete();
+
+            User_activities::create([
+                'user_id'       => $userId,
+                'activity_type' => 'like',
+                'place_id'      => $validated['likeable_type'] === 'places' ? $validated['likeable_id'] : null,
+                'details'       => [
+                    'action'        => 'toggle_unlike',
+                    'resource_type' => $validated['likeable_type'],
+                    'resource_id'   => $validated['likeable_id'],
+                    'ip_address'    => $request->ip(),
+                ],
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -337,6 +377,19 @@ class LikesController extends Controller
                 'user_id' => auth('sanctum')->id(),
                 'likeable_type' => $validated['likeable_type'],
                 'likeable_id' => $validated['likeable_id'],
+            ]);
+
+            User_activities::create([
+                'user_id'       => $userId,
+                'activity_type' => 'like',
+                'place_id'      => $validated['likeable_type'] === 'places' ? $validated['likeable_id'] : null,
+                'details'       => [
+                    'action'        => 'toggle_like',
+                    'resource_type' => $validated['likeable_type'],
+                    'resource_id'   => $validated['likeable_id'],
+                    'resource_name' => $resource->title ?? $resource->name ?? 'N/A',
+                    'ip_address'    => $request->ip(),
+                ],
             ]);
 
             return response()->json([

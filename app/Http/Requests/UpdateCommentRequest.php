@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Comments;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -14,20 +15,20 @@ class UpdateCommentRequest extends FormRequest
 {
     /**
      * التحقق من الصلاحيات
-     * فقط الـ owner أو admin يقدر يعدل
      */
     public function authorize(): bool
     {
-        $comment = $this->route('comment');
+        $id = $this->route('comment') ?? $this->route('id');
+        $comment = Comments::find($id);
 
-        return auth('sanctum')->check() && (
-            auth('sanctum')->id() === $comment->user_id ||
-            auth('sanctum')->user()->role === 'admin'
-        );
+        if (!$comment) return false; // هيرجع 403 Forbidden لو مش موجود
+
+        $user = auth('sanctum')->user();
+        return $user && ($user->id === $comment->user_id || $user->role === 'admin');
     }
 
     /**
-     * الـ Validation Rules
+     * قوانين التحقق
      */
     public function rules(): array
     {
@@ -37,14 +38,14 @@ class UpdateCommentRequest extends FormRequest
     }
 
     /**
-     * الرسائل المخصصة
+     * رسائل الخطأ
      */
     public function messages(): array
     {
         return [
             'content.required' => 'محتوى التعليق مطلوب',
-            'content.min' => 'محتوى التعليق يجب أن يكون 3 أحرف على الأقل',
-            'content.max' => 'محتوى التعليق لا يجب أن يتجاوز 1000 حرف',
+            'content.min'      => 'محتوى التعليق يجب أن يكون 3 أحرف على الأقل',
+            'content.max'      => 'محتوى التعليق لا يجب أن يتجاوز 1000 حرف',
         ];
     }
 }
