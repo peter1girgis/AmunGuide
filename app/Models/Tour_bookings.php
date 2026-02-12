@@ -48,7 +48,7 @@ class Tour_bookings extends Model
      */
 
     /**
-     * العلاقة مع الرحلة (Tour)
+     * The Relationship wiht Tour
      */
     public function tour(): BelongsTo
     {
@@ -56,7 +56,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * العلاقة مع السائح (Tourist)
+     * The Relationship wiht User (Tourist)
      */
     public function tourist(): BelongsTo
     {
@@ -64,7 +64,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * العلاقة Polymorphic مع الدفعات
+     * The Relationship wiht Payments (Polymorphic)
      */
     public function payments(): MorphMany
     {
@@ -196,7 +196,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * التحقق من وجود دفعة معتمدة
+     * check if the booking has an approved payment
      */
     public function hasApprovedPayment(): bool
     {
@@ -206,7 +206,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * التحقق من وجود أي دفعة
+     * check if the booking has any payment
      */
     public function hasPayment(): bool
     {
@@ -222,11 +222,11 @@ class Tour_bookings extends Model
     }
 
     /**
-     * التحقق من إمكانية الإلغاء
+     * check if the admin can cancel the booking
      */
     public function canBeCancelled(): bool
     {
-        // يمكن إلغاء الحجز إذا كان pending أو لم يتم الموافقة على الدفع
+        // if the booking is pending or has no approved payment, it can be cancelled
         return $this->isPending() || !$this->hasApprovedPayment();
     }
 
@@ -267,7 +267,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * الحصول على تفاصيل الحجز كاملة
+     * GetFullDetails
      */
     public function getFullDetails(): array
     {
@@ -340,7 +340,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * إحصائيات حجوزات سائح معين
+     * Statistical of Tourist Booking Status
      */
     public static function getTouristBookingStats(int $touristId): array
     {
@@ -357,7 +357,7 @@ class Tour_bookings extends Model
     }
 
     /**
-     * إحصائيات حجوزات مرشد معين
+     * Statistical of Guide Booking Status
      */
     public static function getGuideBookingStats(int $guideId): array
     {

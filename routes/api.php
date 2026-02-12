@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\CommentsController;
+use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\LikesController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TourBookingController;
@@ -410,25 +411,18 @@ Route::prefix('v1')->group(function () {
         Route::post('payments', [PaymentController::class, 'store'])
             ->name('payments.store');
 
-        /**
-         * عرض دفعة واحدة
-         */
-        // GET /api/v1/payments/{id} - عرض تفاصيل دفعة واحدة
+
+        // GET /api/v1/payments/{id}
         Route::get('payments/{id}', [PaymentController::class, 'show'])
             ->name('payments.show')
             ->where('id', '[0-9]+');
 
-        /**
-         * تحديث الدفعة
-         */
-        // PUT/PATCH /api/v1/payments/{id} - تحديث دفعة (المبلغ للمستخدم، الحالة للـ Admin)
+
+        // PUT/PATCH /api/v1/payments/{id} - (Admin)
         Route::match(['put', 'patch'], 'payments/{payment}', [PaymentController::class, 'update'])
             ->name('payments.update');
 
-        /**
-         * حذف الدفعة
-         */
-        // DELETE /api/v1/payments/{id} - حذف دفعة (معلقة فقط للمستخدم، أي دفعة للـ Admin)
+        // DELETE /api/v1/payments/{id} - (Admin)
         Route::delete('payments/{id}', [PaymentController::class, 'destroy'])
             ->name('payments.destroy');
 
@@ -758,6 +752,214 @@ Route::prefix('v1')->group(function () {
  */
 
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * CHATBOT CONVERSATION ROUTES
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * نظام إدارة محادثات الـ Chatbot الكامل
+ *
+ * السيناريو:
+ * 1. المستخدم يبدأ محادثة → POST /conversations
+ * 2. تبادل الرسائل → POST /conversations/{id}/messages
+ * 3. البوت يولد صورة → يتم تخزينها تلقائياً في generated_images
+ * 4. عرض المحادثة → GET /conversations/{id} (مع كل الرسائل والصور)
+ * 5. حذف المحادثة → DELETE /conversations/{id} (cascade delete)
+ *
+ * Protected Routes: تتطلب Sanctum Authentication
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+Route::prefix('v1')->group(function () {
+
+    /**
+     * ─────────────────────────────────────────────────────────────────
+     * AUTHENTICATED USER ROUTES
+     * ─────────────────────────────────────────────────────────────────
+     */
+
+    Route::middleware('auth:sanctum')->group(function () {
+
+        /**
+         * إدارة المحادثات
+         */
+
+        // POST /api/v1/conversations - بدء محادثة جديدة
+        Route::post('conversations', [ConversationController::class, 'store'])
+            ->name('conversations.store');
+
+        // GET /api/v1/conversations - عرض جميع محادثات المستخدم
+        Route::get('conversations', [ConversationController::class, 'index'])
+            ->name('conversations.index');
+
+        // GET /api/v1/conversations/statistics - إحصائيات المحادثات
+        Route::get('conversations/statistics', [ConversationController::class, 'statistics'])
+            ->name('conversations.statistics');
+
+        // GET /api/v1/conversations/{id} - عرض محادثة واحدة بالتفصيل
+        Route::get('conversations/{id}', [ConversationController::class, 'show'])
+            ->name('conversations.show');
+
+        // DELETE /api/v1/conversations/{id} - حذف محادثة
+        Route::delete('conversations/{id}', [ConversationController::class, 'destroy'])
+            ->name('conversations.destroy');
+
+        /**
+         * إدارة الرسائل
+         */
+
+        // POST /api/v1/conversations/{conversation}/messages - إضافة رسالة
+        Route::post('conversations/{id}/messages', [ConversationController::class, 'storeMessage'])
+            ->where(['id' => '[0-9]+'])
+            ->name('conversations.messages.store');
+
+        // GET /api/v1/conversations/{id}/messages - عرض رسائل محادثة
+        Route::get('conversations/{id}/messages', [ConversationController::class, 'getMessages'])
+            ->name('conversations.messages.index');
+
+        /**
+         * إدارة الصور
+         */
+
+        // GET /api/v1/conversations/{id}/images - عرض الصور المولدة
+        Route::get('conversations/{id}/images', [ConversationController::class, 'getImages'])
+            ->name('conversations.images.index');
+    });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * ROUTE EXAMPLES & USAGE
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * COMPLETE CONVERSATION FLOW:
+ * ---------------------------
+ *
+ * Step 1: بدء محادثة جديدة
+ * POST /api/v1/conversations
+ * Body: {
+ *   "context": "image_generation"
+ * }
+ * Response: {
+ *   "success": true,
+ *   "data": {
+ *     "id": 1,
+ *     "context": "image_generation",
+ *     "user": {...}
+ *   }
+ * }
+ *
+ * Step 2: المستخدم يرسل رسالة
+ * POST /api/v1/conversations/1/messages
+ * Body: {
+ *   "sender": "user",
+ *   "message": "Can you show me the pyramids?"
+ * }
+ * Response: {
+ *   "success": true,
+ *   "data": {
+ *     "id": 1,
+ *     "sender": "user",
+ *     "message": "Can you show me the pyramids?"
+ *   }
+ * }
+ *
+ * Step 3: البوت يرد مع صورة (AUTO IMAGE CREATION!)
+ * POST /api/v1/conversations/1/messages
+ * Body: {
+ *   "sender": "bot",
+ *   "message": "Here's an image of the pyramids!",
+ *   "image_url": "https://example.com/pyramids.jpg",
+ *   "place_id": 5
+ * }
+ * Response: {
+ *   "success": true,
+ *   "message": "Message and image stored successfully",
+ *   "data": {
+ *     "message": {...},
+ *     "generated_image": {
+ *       "id": 1,
+ *       "image_url": "https://example.com/pyramids.jpg",
+ *       "place_id": 5
+ *     }
+ *   }
+ * }
+ * → الصورة تم تخزينها تلقائياً في generated_images!
+ *
+ * Step 4: عرض المحادثة الكاملة
+ * GET /api/v1/conversations/1
+ * Response: {
+ *   "success": true,
+ *   "data": {
+ *     "id": 1,
+ *     "context": "image_generation",
+ *     "messages": [
+ *       {"sender": "user", "message": "Can you show me the pyramids?"},
+ *       {"sender": "bot", "message": "Here's an image of the pyramids!"}
+ *     ],
+ *     "generated_images": [
+ *       {"image_url": "https://example.com/pyramids.jpg", "place_id": 5}
+ *     ]
+ *   }
+ * }
+ *
+ * Step 5: حذف المحادثة (cascade delete)
+ * DELETE /api/v1/conversations/1
+ * → يتم حذف المحادثة + جميع الرسائل + جميع الصور
+ *
+ *
+ * OTHER ENDPOINTS:
+ * ----------------
+ *
+ * 1. عرض جميع المحادثات:
+ *    GET /api/v1/conversations
+ *    GET /api/v1/conversations?context=image_generation
+ *    GET /api/v1/conversations?with_images=1
+ *
+ * 2. عرض رسائل محادثة:
+ *    GET /api/v1/conversations/1/messages
+ *
+ * 3. عرض صور محادثة:
+ *    GET /api/v1/conversations/1/images
+ *
+ * 4. إحصائيات المحادثات:
+ *    GET /api/v1/conversations/statistics
+ *
+ *
+ * SENDER TYPES:
+ * -------------
+ * - "user": رسالة من المستخدم
+ * - "bot": رسالة من البوت (يمكن أن تحتوي على image_url)
+ *
+ *
+ * CONTEXT TYPES:
+ * --------------
+ * - image_generation: توليد صور
+ * - travel_plan: تخطيط رحلات
+ * - info_request: طلب معلومات
+ * - general: محادثة عامة
+ * - place_inquiry: استفسار عن مكان
+ * - tour_inquiry: استفسار عن رحلة
+ *
+ *
+ * AUTO IMAGE CREATION LOGIC:
+ * --------------------------
+ * When sender = "bot" AND image_url is provided:
+ * 1. Message is stored in chatbot_messages
+ * 2. Image is AUTOMATICALLY stored in generated_images
+ * 3. If place_id is provided, it's linked to the image
+ * 4. Response includes both message and image data
+ *
+ *
+ * CASCADE DELETE:
+ * ---------------
+ * When conversation is deleted:
+ * 1. All messages are deleted (ON DELETE CASCADE)
+ * 2. All generated images are deleted (ON DELETE CASCADE)
+ * 3. No orphan records remain
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ */
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

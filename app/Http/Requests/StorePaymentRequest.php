@@ -12,10 +12,8 @@ class StorePaymentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // المستخدم المسجل فقط يمكنه إنشاء دفعة
         return auth('sanctum')->check();
     }
-
     /**
      * Get the validation rules that apply to the request.
      */
@@ -31,20 +29,19 @@ class StorePaymentRequest extends FormRequest
             'payable_type' => [
                 'required',
                 'string',
-                Rule::in(['tour_bookings', 'plans']), // يمكن التوسع مستقبلاً
+                Rule::in(['tour_bookings', 'plans']),
             ],
             'payable_id' => [
                 'required',
                 'integer',
                 'min:1',
                 ],
-            'receipt_image'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // صورة بحد أقصى 2MB
+            'receipt_image'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'transaction_id' => 'nullable|string|max:100',
             'payment_method' => 'nullable|string|max:50',
             'notes'          => 'nullable|string|max:500',
                 ];
     }
-
     /**
      * Get custom messages for validator errors.
      */
@@ -56,11 +53,9 @@ class StorePaymentRequest extends FormRequest
             'amount.numeric' => 'The payment amount must be a number',
             'amount.min' => 'The payment amount must be at least 0.01',
             'amount.max' => 'The payment amount must not exceed 999,999.99',
-
             // Payable Type Messages
             'payable_type.required' => 'The resource type is required',
             'payable_type.in' => 'The resource type must be tour_bookings or plans',
-
             // Payable ID Messages
             'payable_id.required' => 'The resource ID is required',
             'payable_id.integer' => 'The resource ID must be a number',
@@ -73,28 +68,21 @@ class StorePaymentRequest extends FormRequest
             'notes.max' => 'The notes must not exceed 500 characters',
         ];
     }
-
     /**
      * Configure the validator instance.
      */
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            // التحقق من وجود المورد المطلوب
             if (!$validator->errors()->has('payable_type') &&
                 !$validator->errors()->has('payable_id')) {
-
                 $payableType = $this->input('payable_type');
                 $payableId = $this->input('payable_id');
-
-                // تحويل النوع إلى Model Class
                 $modelMap = [
                     'tour_bookings' => 'App\\Models\\Tour_bookings',
                     'plans' => 'App\\Models\\Plans',
                 ];
-
                 $modelClass = $modelMap[$payableType] ?? null;
-
                 if ($modelClass && !$modelClass::find($payableId)) {
                     $validator->errors()->add(
                         'payable_id',
@@ -102,8 +90,6 @@ class StorePaymentRequest extends FormRequest
                     );
                 }
             }
-
-            // التحقق من عدم وجود دفعة معلقة سابقة لنفس المورد
             if (!$validator->errors()->any()) {
                 $payableType = $this->input('payable_type');
                 $payableId = $this->input('payable_id');
@@ -113,13 +99,11 @@ class StorePaymentRequest extends FormRequest
                     'tour_bookings' => 'App\\Models\\Tour_bookings',
                     'plans' => 'App\\Models\\Plans',
                 ];
-
                 $hasPending = \App\Models\Payments::hasPendingPayment(
                     $modelMap[$payableType],
                     $payableId,
                     $userId
                 );
-
                 if ($hasPending) {
                     $validator->errors()->add(
                         'payable_id',
@@ -129,7 +113,6 @@ class StorePaymentRequest extends FormRequest
             }
         });
     }
-
     /**
      * Get custom attributes for validator errors.
      */
