@@ -11,7 +11,7 @@ class StoreConversationRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // المستخدم المسجل فقط يمكنه إنشاء محادثة
+        // Only authenticated user can create conversation
         return auth('sanctum')->check();
     }
 

@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * LikeResource - تحويل Like model إلى JSON
+ * LikeResource - Convert Like model to JSON
  *
- * ✅ تنسيق بيانات التقييم
- * ✅ عرض معلومات المستخدم
- * ✅ معلومات المورد المقيم
+ * ✅ Format rating data
+ * ✅ Display user information
+ * ✅ Resource rating information
  */
 class LikeResource extends JsonResource
 {
@@ -26,7 +26,7 @@ class LikeResource extends JsonResource
             'id' => $this->id,
 
             // ──────────────────────────────────────────────────
-            // User Information (الي قيّم)
+            // User Information (who rated)
             // ──────────────────────────────────────────────────
             'user' => [
                 'id' => $this->user->id,
@@ -37,7 +37,7 @@ class LikeResource extends JsonResource
             ],
 
             // ──────────────────────────────────────────────────
-            // Likeable Information (الموضوع المقيم)
+            // Likeable Information (the resource being rated)
             // ──────────────────────────────────────────────────
             'likeable_type' => $this->likeable_type,
             'likeable_id' => $this->likeable_id,

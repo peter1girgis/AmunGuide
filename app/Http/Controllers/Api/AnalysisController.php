@@ -11,8 +11,8 @@ use Illuminate\Http\JsonResponse;
 class AnalysisController extends Controller
 {
     /**
-     * 1. تحليل مستخدم واحد (User-Centric)
-     * مخصص للـ Chatbot وبناء الخطط الشخصية
+     * 1. Analyze a single user (User-Centric)
+     * Dedicated for Chatbot and building personal plans
      */
     public function getMyData(): JsonResponse
     {
@@ -23,23 +23,23 @@ class AnalysisController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
             }
 
-            // جلب الأنشطة مع Place وتصفية البيانات غير الضرورية
+            // Retrieve activities with Place and filter unnecessary data
             $activities = User_activities::where('user_id', $user->id)
-                ->with('place:id,title') // نأخذ فقط الـ ID والعنوان لتوفير مساحة الـ JSON
+                ->with('place:id,title') // We only take the ID and title to save JSON space
                 ->latest()
                 ->get();
 
             $formattedActivities = $activities->map(function ($act) {
-                // 1. فك تشفير الـ details (سواء كانت مصفوفة أو نص JSON أو فارغة)
+                // 1. Decrypt the details (whether it's an array, JSON text, or empty)
                 $extraDetails = is_string($act->details) ? json_decode($act->details, true) : ($act->details ?? []);
 
-                // 2. دمج البيانات الأساسية مع الـ details الديناميكية
+                // 2. Merge basic data with dynamic details
                 return array_merge([
                     'type' => $act->activity_type,
                     'place_name' => $act->place->title ?? null,
                     'search_query' => $act->search_query ?? null,
                     'timestamp' => $act->created_at->toDateTimeString(),
-                ], (array)$extraDetails); // أي بيانات في details ستصبح حقول أساسية هنا
+                ], (array)$extraDetails); // Any data in details will become base fields here
             });
 
             return response()->json([
@@ -69,8 +69,8 @@ class AnalysisController extends Controller
 }
 
     /**
-     * 2. تحليل شامل لكل المستخدمين (Global Trends)
-     * مخصص لـ Script التحليل العام والتريندات
+     * 2. Comprehensive analysis for all users (Global Trends)
+     * Dedicated for general analysis script and trends
      */
     public function getAllUsersData(): JsonResponse
     {
@@ -78,7 +78,7 @@ class AnalysisController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
         }
         try {
-            // تجميع الأنشطة حسب الأماكن مباشرة لمعرفة التريند
+            // Aggregate activities by places directly to know the trend
             $placesStats = User_activities::with('place')
                 ->whereNotNull('place_id')
                 ->get()
@@ -86,7 +86,7 @@ class AnalysisController extends Controller
                 ->map(function ($group) {
                     $place = $group->first()->place;
 
-                    // تجميع الـ details المبعثرة في الأنشطة الخاصة بهذا المكان
+                    // Aggregate scattered details in activities for this place
                     $allDetails = $group->pluck('details')->filter()->map(fn($d) => is_string($d) ? json_decode($d, true) : $d);
 
                     return [
@@ -97,7 +97,7 @@ class AnalysisController extends Controller
                             'likes' => $group->where('activity_type', 'like')->count(),
                             'comments' => $group->where('activity_type', 'comment')->count(),
                         ],
-                        // استخراج تفاصيل ديناميكية "متكررة" لو موجودة (مثال: المدة المستغرقة)
+                        // Extract dynamic "repeated" details if present (example: time spent)
                         'custom_metadata' => $allDetails->flatten(1)->take(5)
                     ];
                 })->values();

@@ -12,8 +12,8 @@ class StoreTourBookingRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // المستخدم المسجل فقط يمكنه إنشاء حجز
-        // ويجب أن يكون tourist أو admin
+        // Only authenticated user can create a booking
+        // and must be tourist or admin
         $user = auth('sanctum')->user();
 
         if (!$user) {
@@ -38,7 +38,7 @@ class StoreTourBookingRequest extends FormRequest
                 'required',
                 'integer',
                 'min:1',
-                'max:50', // حد أقصى 50 مشارك
+                'max:50', // Maximum 50 participants
             ],
         ];
     }
@@ -72,9 +72,9 @@ class StoreTourBookingRequest extends FormRequest
                 $tourId = $this->input('tour_id');
                 $tour = Tours::find($tourId);
 
-                // التحقق من أن الرحلة موجودة ومتاحة
+                // Check that tour exists and is available
                 if ($tour) {
-                    // التحقق من أن تاريخ الرحلة لم يمضي
+                    // Check that tour date has not passed
                     $tourDate = \Carbon\Carbon::parse($tour->start_date);
                     if ($tourDate->isPast()) {
                         $validator->errors()->add(
@@ -83,7 +83,7 @@ class StoreTourBookingRequest extends FormRequest
                         );
                     }
 
-                    // التحقق من أن المستخدم ليس المرشد نفسه
+                    // Check that user is not the guide themselves
                     if ($tour->guide_id === auth('sanctum')->id()) {
                         $validator->errors()->add(
                             'tour_id',
@@ -93,7 +93,7 @@ class StoreTourBookingRequest extends FormRequest
                 }
             }
 
-            // التحقق من عدم وجود حجز سابق لنفس الرحلة
+            // Check that there is no previous booking for the same tour
             if (!$validator->errors()->any()) {
                 $existingBooking = \App\Models\Tour_bookings::where('tour_id', $this->input('tour_id'))
                     ->where('tourist_id', auth('sanctum')->id())

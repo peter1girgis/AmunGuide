@@ -17,13 +17,13 @@ class TourBookingResource extends JsonResource
         return [
             'id' => $this->id,
 
-            // معلومات الحجز الأساسية
+            // Basic booking information
             'participants_count' => $this->participants_count,
             'amount' => (float) $this->amount,
             'status' => $this->status,
             'status_label' => $this->getStatusLabel(),
 
-            // معلومات الرحلة
+            // Tour information
             'tour' => [
                 'id' => $this->tour->id,
                 'title' => $this->tour->title,
@@ -32,7 +32,7 @@ class TourBookingResource extends JsonResource
                 'start_time' => $this->tour->start_time,
                 'payment_method' => $this->tour->payment_method,
                 'details' => $this->tour->details,
-                // معلومات المرشد
+                // Guide information
                 'guide' => $this->when(
                     $this->relationLoaded('tour'),
                     function () {
@@ -46,7 +46,7 @@ class TourBookingResource extends JsonResource
                 ),
             ],
 
-            // معلومات السائح
+            // Tourist information
             'tourist' => [
                 'id' => $this->tourist->id,
                 'name' => $this->tourist->name,
@@ -54,7 +54,7 @@ class TourBookingResource extends JsonResource
                 'phone' => $this->tourist->phone,
             ],
 
-            // حالة الدفع
+            // Payment status
             'payment_info' => [
                 'status' => $this->getPaymentStatus(),
                 'has_payment' => $this->hasPayment(),
@@ -73,12 +73,12 @@ class TourBookingResource extends JsonResource
                 ),
             ],
 
-            // التواريخ
+            // Dates
             'created_at' => $this->created_at->toDateTimeString(),
             'created_at_human' => $this->created_at->diffForHumans(),
             'updated_at' => $this->updated_at->toDateTimeString(),
 
-            // معلومات الصلاحيات
+            // Permissions information
             'permissions' => [
                 'can_update' => $this->canUpdate($request->user()),
                 'can_delete' => $this->canDelete($request->user()),
@@ -89,11 +89,11 @@ class TourBookingResource extends JsonResource
     }
 
     /**
-     * الحصول على تسمية الحالة
+     * Get status label
      */
     private function getStatusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'Pending',
             'approved' => 'Approved',
             'rejected' => 'Rejected',
@@ -102,7 +102,7 @@ class TourBookingResource extends JsonResource
     }
 
     /**
-     * التحقق من إمكانية التحديث
+     * Check update capability
      */
     private function canUpdate($user): bool
     {
@@ -110,22 +110,22 @@ class TourBookingResource extends JsonResource
             return false;
         }
 
-        // Admin يمكنه تحديث أي حجز
+        // Admin can update any booking
         if ($user->role === 'admin') {
             return true;
         }
 
-        // المرشد يمكنه تحديث حجوزات رحلاته
+        // Guide can update bookings for their tours
         if ($user->role === 'guide' && $this->tour->guide_id === $user->id) {
             return true;
         }
 
-        // السائح يمكنه تحديث حجزه إذا كان pending
+        // Tourist can update their booking if it is pending
         return $this->tourist_id === $user->id && $this->status === 'pending';
     }
 
     /**
-     * التحقق من إمكانية الحذف
+     * Check delete capability
      */
     private function canDelete($user): bool
     {
@@ -133,15 +133,15 @@ class TourBookingResource extends JsonResource
             return false;
         }
 
-        // Admin فقط يمكنه الحذف
+        // Only Admin can delete
         if ($user->role === 'admin') {
             return true;
         }
 
-        // السائح يمكنه حذف حجزه إذا كان pending وليس له دفعة معتمدة
+        // Tourist can delete their booking if it is pending and has no approved payment
         return $this->tourist_id === $user->id &&
-               $this->status === 'pending' &&
-               !$this->hasApprovedPayment();
+            $this->status === 'pending' &&
+            !$this->hasApprovedPayment();
     }
 
     /**

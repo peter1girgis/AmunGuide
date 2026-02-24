@@ -10,20 +10,20 @@ use App\Http\Controllers\Controller;
 use App\Models\User_activities;
 
 /**
- * LikesController - إدارة التقييمات (Like)
+ * LikesController - Likes Management
  *
- * ✅ إضافة تقييم على Tour, Place, أو Plan
- * ✅ إزالة التقييم
- * ✅ عرض التقييمات
- * ✅ عد التقييمات
+ * ✅ Add like on Tour, Place, or Plan
+ * ✅ Remove like
+ * ✅ Display likes
+ * ✅ Count likes
  */
 class LikesController extends Controller
 {
     /**
      * POST /api/v1/likes
-     * إضافة تقييم (Like)
+     * Add a like
      *
-     * الـ Request يجب أن يحتوي على:
+     * The Request must contain:
      * {
      *   "likeable_type": "tours|places|plans",
      *   "likeable_id": 1
@@ -92,13 +92,13 @@ class LikesController extends Controller
         ]);
         User_activities::create([
             'user_id'       => auth('sanctum')->id(),
-            'activity_type' => 'like', // متوفر في الـ Enum الخاص بك
+            'activity_type' => 'like', // Available in your Enum
             'place_id'      => $validated['likeable_type'] === 'places' ? $validated['likeable_id'] : null,
             'details'       => [
                 'action'        => 'added_like',
                 'resource_type' => $validated['likeable_type'],
                 'resource_id'   => $validated['likeable_id'],
-                'resource_name' => $resource->title ?? $resource->name ?? 'N/A', // محاولة جلب الاسم تلقائياً
+                'resource_name' => $resource->title ?? $resource->name ?? 'N/A', // Try to fetch name automatically
                 'ip_address'    => $request->ip(),
             ],
         ]);
@@ -112,9 +112,9 @@ class LikesController extends Controller
 
     /**
      * DELETE /api/v1/likes/{id}
-     * إزالة التقييم
+     * Remove a like
      *
-     * فقط الـ owner يمكن أن يزيل تقييمه
+     * Only the owner can remove their like
      */
     public function destroy($id): JsonResponse
     {
@@ -139,7 +139,7 @@ class LikesController extends Controller
             'activity_type' => 'like',
             'place_id'      => $like->likeable_type === 'places' ? $like->likeable_id : null,
             'details'       => [
-                'action'        => 'removed_like', // توضيح أن العملية هي "إلغاء إعجاب"
+                'action'        => 'removed_like', // Clarify that the action is "unlike"
                 'resource_type' => $like->likeable_type,
                 'resource_id'   => $like->likeable_id,
                 'ip_address'    => request()->ip(),
@@ -157,9 +157,9 @@ class LikesController extends Controller
 
     /**
      * DELETE /api/v1/likes/{likeable_type}/{likeable_id}
-     * إزالة التقييم من مورد معين
+     * Remove like from a specific resource
      *
-     * طريقة بديلة للحذف (أسهل للـ frontend)
+     * Alternative deletion method (easier for frontend)
      */
     public function removeFromResource(
         string $likeableType,
@@ -199,7 +199,7 @@ class LikesController extends Controller
 
     /**
      * GET /api/v1/{likeable_type}/{likeable_id}/likes
-     * الحصول على جميع التقييمات لـ مورد معين
+     * Get all likes for a specific resource
      */
     public function index(string $likeableType, int $likeableId): JsonResponse
     {
@@ -232,7 +232,7 @@ class LikesController extends Controller
 
     /**
      * GET /api/v1/{likeable_type}/{likeable_id}/likes/count
-     * الحصول على عدد التقييمات
+     * Get count of likes
      */
     public function count(string $likeableType, int $likeableId): JsonResponse
     {
@@ -272,39 +272,46 @@ class LikesController extends Controller
 
     /**
      * GET /api/v1/user/{userId}/likes
-     * الحصول على جميع التقييمات لـ مستخدم معين
+     * Get all likes for a specific user
      */
-    public function userLikes(int $userId): JsonResponse
+    public function userLikes(Request $request): JsonResponse
     {
-        if(!auth('sanctum')->check() && (auth('sanctum')->id() !== $userId || auth('sanctum')->user()->role !== 'admin' ) ){
+
+        $targetUserId = $request->input('user_id') ?: auth()->id();
+
+        // 2. Check authorization:
+        // If the requested ID is not the same as the current user's ID "and" the user is not Admin -> reject the request
+        if ((int) $targetUserId !== (int) auth()->id() && auth()->user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to user likes.',
                 'error' => 'unauthorized',
             ], 403);
         }
-        $likes = Likes::where('user_id', $userId)
-                     ->with('user')
-                     ->latest()
-                     ->paginate(15);
 
+        // 3. Fetch data based on the targetUserId we determined
+        $likes = Likes::where('user_id', $targetUserId)
+                    ->with('user')
+                    ->latest()
+                    ->paginate(15);
+
+        // 4. Response
         return response()->json([
             'success' => true,
             'data' => LikeResource::collection($likes),
             'meta' => [
                 'total' => $likes->total(),
-                'user_id' => $userId,
+                'user_id' => (int) $targetUserId, // Return the ID so frontend can confirm whose data this is
             ]
         ]);
     }
-
     /**
      * POST /api/v1/likes/toggle
-     * تقييم أو إزالة التقييم (Toggle)
+     * Add or remove like (Toggle)
      *
-     * أسهل endpoint للـ frontend
-     * إذا كان user لم يقيّم → يضيف تقييم
-     * إذا كان user قيّم → يزيل التقييم
+     * Easier endpoint for frontend
+     * If user did not like → add like
+     * If user already liked → remove like
      */
     public function toggle(Request $request): JsonResponse
     {
@@ -371,6 +378,7 @@ class LikesController extends Controller
                     'error' => 'not_found',
                 ], 404);
             }
+            $resource = $model::find($validated['likeable_id']);
 
             // Add like
             $like = Likes::create([

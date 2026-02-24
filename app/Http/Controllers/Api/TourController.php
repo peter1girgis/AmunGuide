@@ -17,26 +17,26 @@ use Illuminate\Http\JsonResponse;
 /**
  * TourController - Final Professional Edition
  *
- * ✅ استخدام كل الـ Scopes من Model
- * ✅ استخدام الـ Requests للـ validation
- * ✅ استخدام الـ Resources للـ formatting
- * ✅ Activity tracking محترف
+ * ✅ Use all Scopes from Model
+ * ✅ Use Requests for validation
+ * ✅ Use Resources for formatting
+ * ✅ Professional activity tracking
  */
 class TourController extends Controller
 {
     /**
      * GET /api/v1/tours
      *
-     * قائمة الجولات النشطة مع تصفية و ترتيب
-     * ✅ استخدام: active(), forGuide(), priceBetween()
+     * List of active tours with filtering and sorting
+     * ✅ Use: active(), forGuide(), priceBetween()
      */
     public function index(FilterTourRequest $request): JsonResponse
     {
         try {
-            // ✅ ابدأ بـ الجولات النشطة فقط
+            // ✅ Start with active tours only
             $query = Tours::query()->active();
 
-            // ✅ استخدم الـ scopes للـ filtering
+            // ✅ Use scopes for filtering
             if ($request->has('guide_id')) {
                 $query->forGuide($request->get('guide_id'));
             }
@@ -48,7 +48,12 @@ class TourController extends Controller
                 );
             }
 
-            // ✅ الترتيب
+            // ✅ Filter using plan_id if present in Request
+            if ($request->has('plan_id')) {
+                $query->where('plan_id', $request->get('plan_id'));
+            }
+
+            // ✅ Sorting
             $sort = $request->get('sort', 'newest');
             match ($sort) {
                 'price_asc' => $query->orderBy('price'),
@@ -57,7 +62,8 @@ class TourController extends Controller
                 default => $query->latest('created_at'),
             };
 
-            $tours = $query->with(['guide:id,name,phone', 'places:places.id,places.title'])
+            // ✅ Load plan relationship to avoid N+1 problem
+            $tours = $query->with(['guide:id,name,phone', 'places:places.id,places.title', 'plan'])
                 ->paginate($request->get('per_page', 15));
 
             return response()->json([
@@ -83,7 +89,7 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/{id}
      *
-     * تفاصيل جولة معينة
+     * Details of a specific tour
      * ✅ Track user visit
      */
     public function show(Tours $tour): JsonResponse
@@ -103,7 +109,12 @@ class TourController extends Controller
                 ]);
             }
 
-            $tour->load(['guide:id,name,phone,email', 'places:places.id,places.title,places.description']);
+            // ✅ Load plan relationship with planItems and related places to show complete tourist program
+            $tour->load([
+                'guide:id,name,phone,email',
+                'places:places.id,places.title,places.description',
+                'plan.planItems.place',
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -122,8 +133,8 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/search
      *
-     * البحث عن جولات
-     * ✅ استخدام: active(), search()
+     * Search for tours
+     * ✅ Use: active(), search()
      */
     public function search(Request $request): JsonResponse
     {
@@ -139,7 +150,7 @@ class TourController extends Controller
 
 
 
-            // ✅ استخدم الـ scopes
+            // ✅ Use scopes
             $tours = Tours::query()
                 ->active()
                 ->Search($query)
@@ -154,11 +165,11 @@ class TourController extends Controller
                         'user_id' => auth('sanctum')->id(),
                         'activity_type' => 'search',
 
-                        // 💡 تركة: خزن الكلمة الكاملة في الحقل الأساسي للتحليل السريع
+                        // 💡 Note: Store complete word in main field for fast analysis
                         'search_query' => $fullMatchedTerm,
 
                         'details' => [
-                            // خزن ما كتبه المستخدم فعلياً للمقارنة مستقبلاً
+                            // Store what user actually typed for future comparison
                             'user_typed_this' => $query,
                             'actual_match' => $fullMatchedTerm,
                             'results_count' => $tours->total(),
@@ -193,8 +204,8 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/filter
      *
-     * فلترة الجولات مع معايير متقدمة
-     * ✅ استخدام: active(), priceBetween(), forGuide(), startingFrom()
+     * Filter tours with advanced criteria
+     * ✅ Use: active(), priceBetween(), forGuide(), startingFrom()
      */
     public function filter(FilterTourRequest $request): JsonResponse
     {
@@ -229,7 +240,13 @@ class TourController extends Controller
                 $query->startingFrom($request->get('start_date'));
             }
 
-            $tours = $query->with(['guide:id,name,phone'])
+            // ✅ Filter using plan_id if present in Request
+            if ($request->has('plan_id')) {
+                $query->where('plan_id', $request->get('plan_id'));
+            }
+
+            // ✅ Load plan relationship to avoid N+1 problem
+            $tours = $query->with(['guide:id,name,phone', 'plan'])
                 ->latest('created_at')
                 ->paginate($request->get('per_page', 15));
 
@@ -256,15 +273,15 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/popular
      *
-     * أشهر الجولات
-     * ✅ استخدام: active(), popular()
+     * Most popular tours
+     * ✅ Use: active(), popular()
      */
     public function popular(Request $request): JsonResponse
     {
         try {
             $limit = $request->get('limit', 10);
 
-            // ✅ استخدام الـ scope
+            // ✅ Use scope
             $tours = Tours::query()
                 ->active()
                 ->popular($limit)
@@ -288,13 +305,13 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/guide/{guide_id}
      *
-     * جميع جولات دليل معين
-     * ✅ استخدام: active(), forGuide()
+     * All tours of a specific guide
+     * ✅ Use: active(), forGuide()
      */
     public function getGuideToursPublic($guide_id): JsonResponse
     {
         try {
-            // ✅ استخدام الـ scopes
+            // ✅ Use scopes
             $tours = Tours::query()
                 ->active()
                 ->forGuide($guide_id)
@@ -320,17 +337,18 @@ class TourController extends Controller
     /**
      * POST /api/v1/tours
      *
-     * إنشاء جولة جديدة (Guide فقط)
-     * ✅ استخدام StoreTourRequest للـ validation
+     * Create a new tour (Guide only)
+     * ✅ Use StoreTourRequest for validation
      */
     public function store(StoreTourRequest $request): JsonResponse
     {
 
         try {
-            // ✅ البيانات validated بالفعل من الـ Request
+            // ✅ Data already validated from Request
             $validated = $request->validated();
             $validated['guide_id'] = auth('sanctum')->id();
 
+            // ✅ plan_id is saved automatically within $validated if Request sent it (nullable)
             $tour = Tours::create($validated);
 
             // ✅ Attach places
@@ -340,15 +358,15 @@ class TourController extends Controller
             //         $tour->places()->attach($place_id, ['sequence' => $sequence++]);
             //     }
             // }
-            // ✅ Attach places بشكل احترافي وسريع
+            // ✅ Attach places professionally and fast
             if (!empty($validated['places'])) {
                 $placesWithPivot = [];
                 foreach ($validated['places'] as $index => $placeId) {
-                    // نجهز مصفوفة تحتوي على الـ ID والبيانات الإضافية (pivot data)
+                    // Prepare array containing ID and additional data (pivot data)
                     $placesWithPivot[$placeId] = ['sequence' => $index + 1];
                 }
 
-                // تنفيذ عملية الإدخال في قاعدة البيانات بـ Query واحد فقط
+                // Execute insert operation in database with only one Query
                 $tour->places()->attach($placesWithPivot);
             }
             \Log::info('New tour created', ['tour_id' => $tour->id, 'guide_id' => auth('sanctum')->id()]);
@@ -358,8 +376,8 @@ class TourController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tour created successfully.',
-                // 'data' => new TourResource($tour),
-                'data' => new TourResource($tour->load(['places', 'bookings'])),
+                // ✅ Load plan relationship with planItems to show complete linked tourist program
+                'data' => new TourResource($tour->load(['places', 'bookings', 'plan.planItems'])),
             ], 201);
 
         } catch (\Throwable $e) {
@@ -374,14 +392,19 @@ class TourController extends Controller
     /**
      * PUT /api/v1/tours/{id}
      *
-     * تحديث جولة (Guide owner فقط)
-     * ✅ استخدام UpdateTourRequest للـ validation و authorization
+     * Update tour (Guide owner only)
+     * ✅ Use UpdateTourRequest for validation and authorization
      */
     public function update(UpdateTourRequest $request, Tours $tour): JsonResponse
     {
         try {
-            // ✅ البيانات validated و authorized
+            // ✅ Data validated and authorized
             $validated = $request->validated();
+
+            // ✅ Support updating plan_id or clearing it (null) — array_key_exists handles null explicitly
+            if (array_key_exists('plan_id', $validated)) {
+                $tour->plan_id = $validated['plan_id']; // nullable: accepts value or null
+            }
 
             $tour->update($validated);
 
@@ -396,7 +419,8 @@ class TourController extends Controller
 
             \Log::info('Tour updated', ['tour_id' => $tour->id]);
 
-            $tour->load(['guide:id,name,phone', 'places:places.id,places.title']);
+            // ✅ Load plan relationship with planItems to return complete data
+            $tour->load(['guide:id,name,phone', 'places:places.id,places.title', 'plan.planItems']);
 
             return response()->json([
                 'success' => true,
@@ -416,7 +440,7 @@ class TourController extends Controller
     /**
      * DELETE /api/v1/tours/{id}
      *
-     * حذف جولة (Guide owner فقط)
+     * Delete tour (Guide owner only)
      */
     public function destroy(Tours $tour): JsonResponse
     {
@@ -457,8 +481,8 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/my-tours
      *
-     * جولاتي (للـ Guide فقط)
-     * ✅ استخدام: forGuide()
+     * My tours (Guide only)
+     * ✅ Use: forGuide()
      */
     public function myTours(): JsonResponse
     {
@@ -469,7 +493,7 @@ class TourController extends Controller
                 ], 403);
             }
         try {
-            // ✅ استخدام الـ scope
+            // ✅ Use scope
             $tours = Tours::query()
                 ->forGuide(auth('sanctum')->id())
                 ->with(['guide:id,name,phone', 'places:places.id,places.title'])
@@ -494,7 +518,7 @@ class TourController extends Controller
     /**
      * GET /api/v1/tours/{tour_id}/bookings
      *
-     * حجوزات جولة معينة (للـ guide فقط)
+     * Bookings for a specific tour (Guide only)
      */
     public function getTourBookings($tour_id): JsonResponse
     {

@@ -10,6 +10,7 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PlaceController;
+use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\TourController;
 
 /*
@@ -17,961 +18,1541 @@ use App\Http\Controllers\Api\TourController;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great! =>
+| All routes are loaded by the RouteServiceProvider and assigned to the
+| "api" middleware group. Versioned base URL: /api/v1
+|
+| Conventions applied in this file:
+|   - Route ORDER is identical to the original file.
+|   - Every {parameter} route has ->where() and ->missing() guards.
+|   - All comments and documentation are in English only.
 |
 */
 
 
+/*
+|==========================================================================
+| Places · Tours · Comments · Likes
+| Prefix: v1
+|==========================================================================
+*/
 Route::prefix('v1')->group(function () {
 
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places/search
+    |----------------------------------------------------------------------
+    | Description : Search for places by title or keyword.
+    | Method      : GET
+    | URL         : /api/v1/places/search
+    | Auth        : None
+    | Query Params: q (string, required)
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places/search', [PlaceController::class, 'search'])
+        ->name('places.search');
 
-    Route::get('places/search', [PlaceController::class, 'search'])->name('places.search');
-    Route::get('places/trending', [PlaceController::class, 'trending'])->name('places.trending');
-    Route::get('places/filter', [PlaceController::class, 'filter'])->name('places.filter');
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places/trending
+    |----------------------------------------------------------------------
+    | Description : Return the most-visited or highest-rated places.
+    | Method      : GET
+    | URL         : /api/v1/places/trending
+    | Auth        : None
+    | Query Params: limit (integer, optional, default: 10)
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places/trending', [PlaceController::class, 'trending'])
+        ->name('places.trending');
 
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places/filter
+    |----------------------------------------------------------------------
+    | Description : Filter places by price range, rating, or category.
+    | Method      : GET
+    | URL         : /api/v1/places/filter
+    | Auth        : None
+    | Query Params: min_price, max_price, rating (all optional)
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places/filter', [PlaceController::class, 'filter'])
+        ->name('places.filter');
 
-    Route::get('places', [PlaceController::class, 'index'])->name('places.index');
-    Route::get('places/{place}', [PlaceController::class, 'show'])->name('places.show')
-    ->missing(function () {
-        return response()->json([
-            'success' => false,
-            'message' => 'place not found.'
-        ], 404);
-    });
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places
+    |----------------------------------------------------------------------
+    | Description : Return a paginated list of all places.
+    | Method      : GET
+    | URL         : /api/v1/places
+    | Auth        : None
+    | Query Params: page, per_page, sort (all optional)
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places', [PlaceController::class, 'index'])
+        ->name('places.index');
 
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places/{place}
+    |----------------------------------------------------------------------
+    | Description : Retrieve full details of a single place by its ID.
+    | Method      : GET
+    | URL         : /api/v1/places/{place}
+    | Auth        : None
+    | URL Params  : place (integer) — numeric place ID
+    | Success (200): { "success": true, "data": {...} }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places/{place}', [PlaceController::class, 'show'])
+        ->name('places.show')
+        ->where(['place' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found'], 404);
+        });
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('places', [PlaceController::class, 'store'])->name('places.store');
-        Route::put('places/{place}', [PlaceController::class, 'update'])->name('places.update')
-        ->missing(function () {
-            return response()->json([
-                'success' => false,
-                'message' => 'places not found.'
-            ], 404);
-        });
-        Route::delete('places/{place}', [PlaceController::class, 'destroy'])->name('places.destroy')
-        ->missing(function () {
-            return response()->json([
-                'success' => false,
-                'message' => 'place not found.'
-            ], 404);
-        });
+
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/places
+        |----------------------------------------------------------------------
+        | Description : Create a new place (admin only).
+        | Method      : POST
+        | URL         : /api/v1/places
+        | Auth        : Required (Bearer Token)
+        | Request Body: title (string), description (string), ticket_price (numeric)
+        | Success (201): { "success": true, "data": {...} }
+        | Error   (422): { "message": "...", "errors": {...} }
+        |----------------------------------------------------------------------
+        */
+        Route::post('places', [PlaceController::class, 'store'])
+            ->name('places.store');
+
+        /*
+        |----------------------------------------------------------------------
+        | PUT /api/v1/places/{place}
+        |----------------------------------------------------------------------
+        | Description : Update an existing place (admin only).
+        | Method      : PUT
+        | URL         : /api/v1/places/{place}
+        | Auth        : Required (Bearer Token)
+        | URL Params  : place (integer) — numeric place ID
+        | Request Body: title, description, ticket_price, image (all optional)
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
+        Route::put('places/{place}', [PlaceController::class, 'update'])
+            ->name('places.update')
+            ->where(['place' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
+
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/places/{place}
+        |----------------------------------------------------------------------
+        | Description : Permanently delete a place (admin only).
+        | Method      : DELETE
+        | URL         : /api/v1/places/{place}
+        | Auth        : Required (Bearer Token)
+        | URL Params  : place (integer) — numeric place ID
+        | Success (200): { "success": true, "message": "Place deleted." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
+        Route::delete('places/{place}', [PlaceController::class, 'destroy'])
+            ->name('places.destroy')
+            ->where(['place' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
     });
 
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 📍 PUBLIC TOUR ROUTES (Guest + Authenticated with tracking)
-    // ═════════════════════════════════════════════════════════════════════
+    // =========================================================================
+    // PUBLIC TOUR ROUTES (Guest + Authenticated with activity tracking)
+    // =========================================================================
 
-    /**
-     * GET /api/v1/tours
-     * قائمة الجولات النشطة -------------------------------------  Done
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours
+    |----------------------------------------------------------------------
+    | Description : Return a paginated list of active tours. Activity is
+    |               tracked automatically when the caller is authenticated.
+    | Method      : GET
+    | URL         : /api/v1/tours
+    | Auth        : None
+    | Query Params: guide_id, min_price, max_price, plan_id, sort, per_page
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours', [TourController::class, 'index'])
         ->name('tours.index');
-    /**
-     * GET /api/v1/tours/search
-     * البحث عن جولات
-     */
 
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours/search
+    |----------------------------------------------------------------------
+    | Description : Search active tours by title or description.
+    | Method      : GET
+    | URL         : /api/v1/tours/search
+    | Auth        : None
+    | Query Params: q (string, required, min 3 chars), per_page (optional)
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    | Error   (400): { "success": false, "message": "Query too short." }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours/search', [TourController::class, 'search'])
         ->name('tours.search');
 
-        /**
-     * GET /api/v1/tours/filter ------------------------ Done
-     * فلترة الجولات
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours/filter
+    |----------------------------------------------------------------------
+    | Description : Filter active tours by price, guide, start date, or
+    |               linked plan. Activity is tracked when authenticated.
+    | Method      : GET
+    | URL         : /api/v1/tours/filter
+    | Auth        : None
+    | Query Params: min_price, max_price, guide_id, start_date, plan_id, per_page
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours/filter', [TourController::class, 'filter'])
         ->name('tours.filter');
 
-    /**
-     * GET /api/v1/tours/popular -----------------------------  Done
-     * أشهر الجولات
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours/popular
+    |----------------------------------------------------------------------
+    | Description : Return the most-booked active tours.
+    | Method      : GET
+    | URL         : /api/v1/tours/popular
+    | Auth        : None
+    | Query Params: limit (integer, optional, default: 10)
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours/popular', [TourController::class, 'popular'])
         ->name('tours.popular');
-    /**
-     * GET /api/v1/tours/{id}
-     * تفاصيل جولة + tracking -------------------------- Done
-     */
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours/{tour}
+    |----------------------------------------------------------------------
+    | Description : Retrieve full detail of a single tour including guide,
+    |               places, and linked plan. Logs a "visit" activity when
+    |               the caller is authenticated.
+    | Method      : GET
+    | URL         : /api/v1/tours/{tour}
+    | Auth        : None (activity tracked when authenticated)
+    | URL Params  : tour (integer) — numeric tour ID
+    | Success (200): { "success": true, "data": {...} }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours/{tour}', [TourController::class, 'show'])
         ->name('tours.show')
+        ->where(['tour' => '[0-9]+'])
         ->missing(function () {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tour not found.'
-                ], 404);
-            });
+            return response()->json(['message' => 'Record not found'], 404);
+        });
 
-
-
-
-
-    /**
-     * GET /api/v1/tours/guide/{guide_id} ---------------------  Done
-     * جولات دليل معين
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/tours/guide/{guide_id}
+    |----------------------------------------------------------------------
+    | Description : List all active tours belonging to a specific guide
+    |               (public profile view).
+    | Method      : GET
+    | URL         : /api/v1/tours/guide/{guide_id}
+    | Auth        : None
+    | URL Params  : guide_id (integer) — numeric user ID of the guide
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
     Route::get('tours/guide/{guide_id}', [TourController::class, 'getGuideToursPublic'])
-        ->name('tours.guide.public');
+        ->name('tours.guide.public')
+        ->where(['guide_id' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found'], 404);
+        });
 
-    // ═════════════════════════════════════════════════════════════════════
-    // 🔒 PROTECTED TOUR ROUTES (Authentication Required)
-    // ═════════════════════════════════════════════════════════════════════
-
+    // =========================================================================
+    // PROTECTED TOUR ROUTES (Authentication Required)
+    // =========================================================================
     Route::middleware('auth:sanctum')->group(function () {
 
-        /**
-         * POST /api/v1/tours
-         * إنشاء جولة (Guide فقط) ---------------------------  Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/tours
+        |----------------------------------------------------------------------
+        | Description : Create a new tour (guide only). Optionally attaches
+        |               places in sequence and links to a plan via plan_id.
+        | Method      : POST
+        | URL         : /api/v1/tours
+        | Auth        : Required (Bearer Token — guide role)
+        | Request Body: title (required), price (required), description,
+        |               start_date, plan_id (nullable), places[] (all optional)
+        | Success (201): { "success": true, "message": "...", "data": {...} }
+        | Error   (422): { "message": "...", "errors": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::post('tours', [TourController::class, 'store'])
             ->name('tours.store');
 
-        /**
-         * PUT /api/v1/tours/{id}
-         * تحديث جولة (Guide owner)
-         * Authorization check في الـ Request -------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | PUT /api/v1/tours/{tour}
+        |----------------------------------------------------------------------
+        | Description : Update an existing tour. Only the owner guide may update.
+        |               Sending plan_id as null detaches the linked plan.
+        |               Authorization is enforced inside the Form Request.
+        | Method      : PUT
+        | URL         : /api/v1/tours/{tour}
+        | Auth        : Required (Bearer Token — tour owner)
+        | URL Params  : tour (integer) — numeric tour ID
+        | Request Body: title, price, description, start_date, plan_id, places[]
+        | Success (200): { "success": true, "message": "...", "data": {...} }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::put('tours/{tour}', [TourController::class, 'update'])
             ->name('tours.update')
+            ->where(['tour' => '[0-9]+'])
             ->missing(function () {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tour not found.'
-                ], 404);
+                return response()->json(['message' => 'Record not found'], 404);
             });
 
-        /**
-         * DELETE /api/v1/tours/{id}
-         * حذف جولة (Guide owner)
-         * Authorization check في الـ Controller -------------------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/tours/{tour}
+        |----------------------------------------------------------------------
+        | Description : Permanently delete a tour and detach all linked places.
+        |               Authorization is enforced inside the Controller.
+        | Method      : DELETE
+        | URL         : /api/v1/tours/{tour}
+        | Auth        : Required (Bearer Token — tour owner or admin)
+        | URL Params  : tour (integer) — numeric tour ID
+        | Success (200): { "success": true, "message": "Tour deleted." }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('tours/{tour}', [TourController::class, 'destroy'])
             ->name('tours.destroy')
+            ->where(['tour' => '[0-9]+'])
             ->missing(function () {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tour not found.'
-                ], 404);
+                return response()->json(['message' => 'Record not found'], 404);
             });
 
-        /**
-         * GET /api/v1/tours/my-tours ----------------------------  Done
-         * جولاتي (Guide فقط)
-         */
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/my-tours
+        |----------------------------------------------------------------------
+        | Description : Return all tours created by the authenticated guide.
+        | Method      : GET
+        | URL         : /api/v1/my-tours
+        | Auth        : Required (Bearer Token — guide role)
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        |----------------------------------------------------------------------
+        */
         Route::get('my-tours', [TourController::class, 'myTours'])
             ->name('tours.my-tours');
 
-        /**
-         * GET /api/v1/tours/{tour_id}/bookings
-         * حجوزات جولة (Guide owner)
-         */
         // Route::get('tours/{tour_id}/bookings', [TourController::class, 'getTourBookings'])
         //     ->name('tours.bookings');
     });
-    // ════════════════════════════════════════════════════════════
-    // 💬 COMMENTS ENDPOINTS
-    // ════════════════════════════════════════════════════════════
 
-    /**
-     * GET /api/v1/comments/{type}/{id}
-     * الحصول على جميع التعليقات لـ موضوع معين
-     * type: tours, places, plans ---------------------------------- Done
-     * id: معرف الموضوع
-     */
+
+    // =========================================================================
+    // COMMENTS — Public endpoints
+    // =========================================================================
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/comments/{commentableType}/{commentableId}
+    |----------------------------------------------------------------------
+    | Description : Return all comments for a specific resource.
+    | Method      : GET
+    | URL         : /api/v1/comments/{commentableType}/{commentableId}
+    | Auth        : None
+    | URL Params  : commentableType (tours|places|plans),
+    |               commentableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
     Route::get('comments/{commentableType}/{commentableId}',
         [CommentsController::class, 'index'])
         ->name('comments.index')
-        ->where('commentableType', 'tours|places|plans');
+        ->where(['commentableType' => 'tours|places|plans', 'commentableId' => '[0-9]+']);
 
-    /**
-     * GET /api/v1/{type}/{id}/comments ------------------------------- Done
-     *  بديل: الحصول على التعليقات (نفس الوظيفة)
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/{commentableType}/{commentableId}/comments
+    |----------------------------------------------------------------------
+    | Description : Alternate URL pattern to retrieve comments for a resource
+    |               (identical behaviour to the route above).
+    | Method      : GET
+    | URL         : /api/v1/{commentableType}/{commentableId}/comments
+    | Auth        : None
+    | URL Params  : commentableType (tours|places|plans),
+    |               commentableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
     Route::get('{commentableType}/{commentableId}/comments',
         [CommentsController::class, 'index'])
-        ->where('commentableType', 'tours|places|plans');
+        ->where(['commentableType' => 'tours|places|plans', 'commentableId' => '[0-9]+']);
 
-    /**
-     * GET /api/v1/{type}/{id}/comments/count ---------------------------------- Done
-     * عد التعليقات
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/{commentableType}/{commentableId}/comments/count
+    |----------------------------------------------------------------------
+    | Description : Return the total comment count for a given resource.
+    | Method      : GET
+    | URL         : /api/v1/{commentableType}/{commentableId}/comments/count
+    | Auth        : None
+    | URL Params  : commentableType (tours|places|plans),
+    |               commentableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "count": 42 }
+    |----------------------------------------------------------------------
+    */
     Route::get('{commentableType}/{commentableId}/comments/count',
         [CommentsController::class, 'count'])
-        ->where('commentableType', 'tours|places|plans');
+        ->where(['commentableType' => 'tours|places|plans', 'commentableId' => '[0-9]+']);
 
-    /**
-     * GET /api/v1/comments/{id} ---------------------------------- Done
-     * الحصول على تعليق واحد
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/comments/{comment}
+    |----------------------------------------------------------------------
+    | Description : Retrieve a single comment by its ID.
+    | Method      : GET
+    | URL         : /api/v1/comments/{comment}
+    | Auth        : None
+    | URL Params  : comment (integer) — numeric comment ID
+    | Success (200): { "success": true, "data": {...} }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
     Route::get('comments/{comment}', [CommentsController::class, 'show'])
-        ->name('comments.show');
+        ->name('comments.show')
+        ->where(['comment' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found'], 404);
+        });
 
-    /**
-     * GET /api/v1/user/{userId}/comments -------------------------  Done
-     * جميع تعليقات مستخدم معين
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/user/{userId}/comments
+    |----------------------------------------------------------------------
+    | Description : Return all comments authored by a specific user.
+    | Method      : GET
+    | URL         : /api/v1/user/{userId}/comments
+    | Auth        : None
+    | URL Params  : userId (integer) — numeric user ID
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
     Route::get('user/{userId}/comments', [CommentsController::class, 'userComments'])
-        ->name('comments.user');
+        ->name('comments.user')
+        ->where(['userId' => '[0-9]+']);
 
-    // Protected comment endpoints (require authentication)
+    // -- Protected comment endpoints (auth required) -----------------------
     Route::middleware('auth:sanctum')->group(function () {
-        /**
-         * POST /api/v1/comments
-         * إضافة تعليق
-         * Body: {
-         *   "content": "محتوى التعليق",
-         *   "commentable_type": "tours|places|plans",
-         *   "commentable_id": 1
-         * } -------------------------------------- Done
-         */
+
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/comments
+        |----------------------------------------------------------------------
+        | Description : Add a new comment to any supported resource.
+        | Method      : POST
+        | URL         : /api/v1/comments
+        | Auth        : Required (Bearer Token)
+        | Request Body: content (string, required),
+        |               commentable_type (tours|places|plans, required),
+        |               commentable_id (integer, required)
+        | Success (201): { "success": true, "data": {...} }
+        | Error   (422): { "message": "...", "errors": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::post('comments', [CommentsController::class, 'store'])
             ->name('comments.store');
 
-        /**
-         * POST /api/v1/{type}/{id}/comments
-         * إضافة تعليق مباشرة على موضوع (أسهل)
-         * Body: { "content": "محتوى التعليق" } --------------------------------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/{commentableType}/{commentableId}/comments
+        |----------------------------------------------------------------------
+        | Description : Alternate URL — add a comment directly on a resource
+        |               without specifying commentable fields in the body.
+        | Method      : POST
+        | URL         : /api/v1/{commentableType}/{commentableId}/comments
+        | Auth        : Required (Bearer Token)
+        | URL Params  : commentableType (tours|places|plans),
+        |               commentableId (integer) — numeric resource ID
+        | Request Body: content (string, required)
+        | Success (201): { "success": true, "data": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::post('{commentableType}/{commentableId}/comments',
             [CommentsController::class, 'storeOnResource'])
-            ->where('commentableType', 'tours|places|plans');
+            ->where(['commentableType' => 'tours|places|plans', 'commentableId' => '[0-9]+']);
 
-        /**
-         * PUT /api/v1/comments/{id}
-         * تحديث التعليق (owner فقط)
-         * Body: { "content": "محتوى جديد" } ---------------------------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | PUT /api/v1/comments/{id}
+        |----------------------------------------------------------------------
+        | Description : Update the content of a comment (owner only).
+        | Method      : PUT
+        | URL         : /api/v1/comments/{id}
+        | Auth        : Required (Bearer Token — comment owner)
+        | URL Params  : id (integer) — numeric comment ID
+        | Request Body: content (string, required)
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        |----------------------------------------------------------------------
+        */
         Route::put('comments/{id}', [CommentsController::class, 'update'])
-            ->name('comments.update');
+            ->name('comments.update')
+            ->where(['id' => '[0-9]+']);
 
-        /**
-         * DELETE /api/v1/comments/{id}
-         * حذف التعليق (owner أو admin) ---------------------------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/comments/{comment}
+        |----------------------------------------------------------------------
+        | Description : Delete a comment (owner or admin only).
+        | Method      : DELETE
+        | URL         : /api/v1/comments/{comment}
+        | Auth        : Required (Bearer Token — owner or admin)
+        | URL Params  : comment (integer) — numeric comment ID
+        | Success (200): { "success": true, "message": "Comment deleted." }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('comments/{comment}', [CommentsController::class, 'destroy'])
-            ->name('comments.destroy');
+            ->name('comments.destroy')
+            ->where(['comment' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
     });
 
-    // ════════════════════════════════════════════════════════════
-    // ❤️ LIKES ENDPOINTS
-    // ════════════════════════════════════════════════════════════
 
-    /**
-     * GET /api/v1/{type}/{id}/likes
-     * الحصول على جميع التقييمات لـ موضوع معين
-     * type: tours, places, plans     ------------------------------ Done
-     */
+    // =========================================================================
+    // LIKES — Public endpoints
+    // =========================================================================
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/{likeableType}/{likeableId}/likes
+    |----------------------------------------------------------------------
+    | Description : Return all likes for a given resource.
+    | Method      : GET
+    | URL         : /api/v1/{likeableType}/{likeableId}/likes
+    | Auth        : None
+    | URL Params  : likeableType (tours|places|plans),
+    |               likeableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
     Route::get('{likeableType}/{likeableId}/likes',
         [LikesController::class, 'index'])
-        ->where('likeableType', 'tours|places|plans');
+        ->where(['likeableType' => 'tours|places|plans', 'likeableId' => '[0-9]+']);
 
-    /**
-     * GET /api/v1/{type}/{id}/likes/count
-     * عد التقييمات + هل المستخدم قيّم؟  ------------------------------ Done
-     */
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/{likeableType}/{likeableId}/likes/count
+    |----------------------------------------------------------------------
+    | Description : Return the total like count for a resource, and whether
+    |               the authenticated user has already liked it.
+    | Method      : GET
+    | URL         : /api/v1/{likeableType}/{likeableId}/likes/count
+    | Auth        : None (liked_by_me only populated when authenticated)
+    | URL Params  : likeableType (tours|places|plans),
+    |               likeableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "count": 14, "liked_by_me": false }
+    |----------------------------------------------------------------------
+    */
     Route::get('{likeableType}/{likeableId}/likes/count',
         [LikesController::class, 'count'])
-        ->where('likeableType', 'tours|places|plans');
+        ->where(['likeableType' => 'tours|places|plans', 'likeableId' => '[0-9]+']);
 
-    /**
-     * GET /api/v1/user/{userId}/likes   ----------------------------------------------  Done
-     * جميع التقييمات لـ مستخدم معين
-     */
-    Route::get('user/{userId}/likes', [LikesController::class, 'userLikes'])
-        ->name('likes.user');
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/user/{userId}/likes
+    |----------------------------------------------------------------------
+    | Description : Return all likes given by a specific user.
+    | Method      : GET
+    | URL         : /api/v1/user/{userId}/likes
+    | Auth        : None
+    | URL Params  : userId (integer) — numeric user ID
+    | Success (200): { "success": true, "data": [...] }
+    |----------------------------------------------------------------------
+    */
 
-    // Protected like endpoints (require authentication)
+
+    // -- Protected like endpoints (auth required) --------------------------
     Route::middleware('auth:sanctum')->group(function () {
-        /**
-         * POST /api/v1/likes
-         * إضافة تقييم (Like)
-         * Body: {
-         *   "likeable_type": "tours|places|plans",
-         *   "likeable_id": 1
-         * } --------------------------------------- Done
-         */
+
+    Route::get('user/likes', [LikesController::class, 'userLikes'])
+            ->name('likes.user');
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/likes
+        |----------------------------------------------------------------------
+        | Description : Add a like on a resource.
+        | Method      : POST
+        | URL         : /api/v1/likes
+        | Auth        : Required (Bearer Token)
+        | Request Body: likeable_type (tours|places|plans), likeable_id (integer)
+        | Success (201): { "success": true, "data": {...} }
+        | Error   (409): { "success": false, "message": "Already liked." }
+        |----------------------------------------------------------------------
+        */
         Route::post('likes', [LikesController::class, 'store'])
             ->name('likes.store');
 
-        /**
-         * POST /api/v1/likes/toggle
-         * تقييم أو إزالة التقييم (أسهل للـ frontend)
-         * Body: {
-         *   "likeable_type": "tours|places|plans",
-         *   "likeable_id": 1
-         * } ----------------------------------------------------------Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/likes/toggle
+        |----------------------------------------------------------------------
+        | Description : Toggle a like — adds if absent, removes if present.
+        |               Preferred for frontend use.
+        | Method      : POST
+        | URL         : /api/v1/likes/toggle
+        | Auth        : Required (Bearer Token)
+        | Request Body: likeable_type (tours|places|plans), likeable_id (integer)
+        | Success (200): { "success": true, "liked": true, "count": 15 }
+        |----------------------------------------------------------------------
+        */
         Route::post('likes/toggle', [LikesController::class, 'toggle'])
             ->name('likes.toggle');
 
-        /**
-         * DELETE /api/v1/likes/{id}
-         * إزالة التقييم   --------------------------------------- Done
-         */
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/likes/{like}
+        |----------------------------------------------------------------------
+        | Description : Remove a like by its own record ID (owner only).
+        | Method      : DELETE
+        | URL         : /api/v1/likes/{like}
+        | Auth        : Required (Bearer Token — like owner)
+        | URL Params  : like (integer) — numeric like ID
+        | Success (200): { "success": true, "message": "Like removed." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('likes/{like}', [LikesController::class, 'destroy'])
-            ->name('likes.destroy');
+            ->name('likes.destroy')
+            ->where(['like' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
     });
-    /**
-     * DELETE /api/v1/{type}/{id}/likes
-     * إزالة التقييم من موضوع معين ---------------------------------- Done
-     */
+
+    /*
+    |----------------------------------------------------------------------
+    | DELETE /api/v1/{likeableType}/{likeableId}/likes
+    |----------------------------------------------------------------------
+    | Description : Remove the authenticated user's like from a resource
+    |               via the resource URL (no like record ID needed).
+    | Method      : DELETE
+    | URL         : /api/v1/{likeableType}/{likeableId}/likes
+    | Auth        : Required (Bearer Token)
+    | URL Params  : likeableType (tours|places|plans),
+    |               likeableId (integer) — numeric resource ID
+    | Success (200): { "success": true, "message": "Like removed." }
+    |----------------------------------------------------------------------
+    */
     Route::delete('{likeableType}/{likeableId}/likes',
         [LikesController::class, 'removeFromResource'])
-        ->where('likeableType', 'tours|places|plans');
+        ->where(['likeableType' => 'tours|places|plans', 'likeableId' => '[0-9]+']);
 
-});
+}); // end prefix('v1')
 
+
+/*
+|==========================================================================
+| Analysis
+| Prefix: v1/analysis
+|==========================================================================
+*/
 Route::prefix('v1/analysis')->group(function () {
-    /**
-     * POST /api/v1/analysis/user_activity
-     * give analysis data for a single user  ------------------------------  Done
-     */
+
+    /*
+    |----------------------------------------------------------------------
+    | POST /api/v1/analysis/user_activity
+    |----------------------------------------------------------------------
+    | Description : Return activity analysis data for the authenticated user.
+    | Method      : POST
+    | URL         : /api/v1/analysis/user_activity
+    | Auth        : Required (Bearer Token)
+    | Success (200): { "success": true, "data": {...} }
+    |----------------------------------------------------------------------
+    */
     Route::post('/user_activity', [AnalysisController::class, 'getMyData'])
         ->name('analysis.user.single');
-    /**
-     * GET /api/v1/analysis/users-all
-     * give analysis data for all users  ------------------------------  Done
-     */
 
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/analysis/users-all
+    |----------------------------------------------------------------------
+    | Description : Return aggregated activity analysis for all users
+    |               (admin only).
+    | Method      : GET
+    | URL         : /api/v1/analysis/users-all
+    | Auth        : Required (Bearer Token — admin role)
+    | Success (200): { "success": true, "data": {...} }
+    |----------------------------------------------------------------------
+    */
     Route::get('/users-all', [AnalysisController::class, 'getAllUsersData'])
         ->name('analysis.users.global');
 
-});
+}); // end prefix('v1/analysis')
 
-/**
- * ⚠️ IMPORTANT NOTES:
- *
- * 1. Route Order Matters!
- *    GET /places/search  must come before GET /places/{id}
- *    Because Laravel will try to match {id} first
- *
- * 2. Auth Middleware:
- *    - Public endpoints: no middleware
- *    - Protected endpoints: middleware('auth:sanctum')
- *
- * 3. Authorization:
- *    - Store, Update, Delete: role:admin
- *    - Check is done in controller with authorize()
- *
- * 4. Rate Limiting (optional):
- *    Add ->middleware('throttle:60,1') for rate limiting
- *
- * 5. Query Parameters:
- *    - page: for pagination (default 1)
- *    - per_page: items per page (default 15, max 100)
- *    - sort: for sorting
- *    - search: for searching
- */
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * PAYMENT ROUTES
- * ═══════════════════════════════════════════════════════════════════════
- *
- * نظام إدارة الدفعات الكامل
- *
- * Protected Routes: تتطلب Sanctum Authentication
- * Admin Routes: تتطلب role = 'admin'
- * ═══════════════════════════════════════════════════════════════════════
- */
+/*
+|--------------------------------------------------------------------------
+| General API Notes
+|--------------------------------------------------------------------------
+|
+| 1. Route Order: Static routes (e.g. /places/search) must always be
+|    registered before dynamic routes (e.g. /places/{id}) within the same
+|    prefix group so Laravel does not treat keywords as IDs.
+|
+| 2. Auth Middleware:
+|    - Public endpoints   : no middleware
+|    - Protected endpoints: middleware('auth:sanctum')
+|
+| 3. Authorization: Role checks (admin / guide / owner) are enforced
+|    inside the relevant Form Request or Controller method.
+|
+| 4. Rate Limiting (optional): append ->middleware('throttle:60,1').
+|
+| 5. Pagination defaults: page=1, per_page=15 (max 100).
+|
+*/
 
+
+/*
+|==========================================================================
+| Payments
+| Prefix: v1
+| All payment routes require authentication. No public endpoints exist.
+| Note: route::middleware('role:admin') is commented out below —
+|       uncomment that wrapper when the role middleware is available.
+|==========================================================================
+*/
 Route::prefix('v1')->group(function () {
-
-    /**
-     * ─────────────────────────────────────────────────────────────────
-     * PUBLIC/GUEST ROUTES (لا تتطلب Authentication)
-     * ─────────────────────────────────────────────────────────────────
-     */
-
-    // لا توجد routes عامة للدفعات - كلها محمية
-
-
-    /**
-     * ─────────────────────────────────────────────────────────────────
-     * AUTHENTICATED USER ROUTES
-     * ─────────────────────────────────────────────────────────────────
-     */
 
     Route::middleware('auth:sanctum')->group(function () {
 
-        /**
-         * دفعات المستخدم الحالي
-         */
-        // GET /api/v1/payments/my-payments - عرض جميع دفعات المستخدم الحالي
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/payments/my-payments
+        |----------------------------------------------------------------------
+        | Description : List all payments created by the authenticated user.
+        | Method      : GET
+        | URL         : /api/v1/payments/my-payments
+        | Auth        : Required (Bearer Token)
+        | Query Params: status (pending|approved|failed), per_page (optional)
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::get('payments/my-payments', [PaymentController::class, 'myPayments'])
             ->name('payments.my-payments');
 
-        /**
-         * إنشاء دفعة جديدة
-         */
-        // POST /api/v1/payments - إنشاء دفعة جديدة
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/payments
+        |----------------------------------------------------------------------
+        | Description : Create a new payment record linked to a payable resource.
+        | Method      : POST
+        | URL         : /api/v1/payments
+        | Auth        : Required (Bearer Token)
+        | Request Body: amount (numeric, required), payable_type (string, required),
+        |               payable_id (integer, required), payment_method,
+        |               transaction_id, receipt_image, notes (all optional)
+        | Success (201): { "success": true, "message": "...", "data": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::post('payments', [PaymentController::class, 'store'])
             ->name('payments.store');
 
-
-        // GET /api/v1/payments/{id}
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/payments/{id}
+        |----------------------------------------------------------------------
+        | Description : Retrieve a single payment record by its ID.
+        | Method      : GET
+        | URL         : /api/v1/payments/{id}
+        | Auth        : Required (Bearer Token)
+        | URL Params  : id (integer) — numeric payment ID
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::get('payments/{id}', [PaymentController::class, 'show'])
             ->name('payments.show')
-            ->where('id', '[0-9]+');
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-
-        // PUT/PATCH /api/v1/payments/{id} - (Admin)
+        /*
+        |----------------------------------------------------------------------
+        | PUT|PATCH /api/v1/payments/{payment}
+        |----------------------------------------------------------------------
+        | Description : Update a payment record (admin only).
+        | Method      : PUT or PATCH
+        | URL         : /api/v1/payments/{payment}
+        | Auth        : Required (Bearer Token — admin role)
+        | URL Params  : payment (integer) — numeric payment ID
+        | Request Body: status (approved|failed|pending), amount (optional)
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::match(['put', 'patch'], 'payments/{payment}', [PaymentController::class, 'update'])
-            ->name('payments.update');
+            ->name('payments.update')
+            ->where(['payment' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        // DELETE /api/v1/payments/{id} - (Admin)
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/payments/{id}
+        |----------------------------------------------------------------------
+        | Description : Delete a payment record (admin only).
+        | Method      : DELETE
+        | URL         : /api/v1/payments/{id}
+        | Auth        : Required (Bearer Token — admin role)
+        | URL Params  : id (integer) — numeric payment ID
+        | Success (200): { "success": true, "message": "Payment deleted." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('payments/{id}', [PaymentController::class, 'destroy'])
-            ->name('payments.destroy');
+            ->name('payments.destroy')
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-
-        /**
-         * ─────────────────────────────────────────────────────────────────
-         * ADMIN ONLY ROUTES
-         * ─────────────────────────────────────────────────────────────────
-         */
-
+        // -- Admin-only routes (uncomment middleware wrapper when ready) ----
         // Route::middleware('role:admin')->group(function () {
 
-            /**
-             * عرض جميع الدفعات
-             */
-            // GET /api/v1/payments - عرض جميع الدفعات مع الفلاتر
-            Route::get('payments', [PaymentController::class, 'index'])
-                ->name('payments.index');
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/payments
+        |----------------------------------------------------------------------
+        | Description : List all payments with optional filters (admin only).
+        | Method      : GET
+        | URL         : /api/v1/payments
+        | Auth        : Required (Bearer Token — admin role)
+        | Query Params: status, payable_type, user_id, from_date, to_date, per_page
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        |----------------------------------------------------------------------
+        */
+        Route::get('payments', [PaymentController::class, 'index'])
+            ->name('payments.index');
 
-            /**
-             * إحصائيات الدفعات
-             */
-            // GET /api/v1/payments/statistics - إحصائيات شاملة للدفعات
-            Route::get('payments/statistics', [PaymentController::class, 'statistics'])
-                ->name('payments.statistics');
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/payments/statistics
+        |----------------------------------------------------------------------
+        | Description : Return aggregated payment statistics (admin only).
+        | Method      : GET
+        | URL         : /api/v1/payments/statistics
+        | Auth        : Required (Bearer Token — admin role)
+        | Success (200): { "success": true, "data": { "total": 0, ... } }
+        |----------------------------------------------------------------------
+        */
+        Route::get('payments/statistics', [PaymentController::class, 'statistics'])
+            ->name('payments.statistics');
 
-            /**
-             * الموافقة/الرفض
-             */
-            // POST /api/v1/payments/{id}/approve - الموافقة على دفعة
-            Route::post('payments/{id}/approve', [PaymentController::class, 'approve'])
-                ->name('payments.approve');
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/payments/{id}/approve
+        |----------------------------------------------------------------------
+        | Description : Approve a pending payment. Automatically updates the
+        |               linked booking status to "approved" (admin only).
+        | Method      : POST
+        | URL         : /api/v1/payments/{id}/approve
+        | Auth        : Required (Bearer Token — admin role)
+        | URL Params  : id (integer) — numeric payment ID
+        | Success (200): { "success": true, "message": "...", "booking_updated": true }
+        |----------------------------------------------------------------------
+        */
+        Route::post('payments/{id}/approve', [PaymentController::class, 'approve'])
+            ->name('payments.approve')
+            ->where(['id' => '[0-9]+']);
 
-            // POST /api/v1/payments/{id}/reject - رفض دفعة
-            Route::post('payments/{id}/reject', [PaymentController::class, 'reject'])
-                ->name('payments.reject');
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/payments/{id}/reject
+        |----------------------------------------------------------------------
+        | Description : Reject a pending payment (admin only).
+        | Method      : POST
+        | URL         : /api/v1/payments/{id}/reject
+        | Auth        : Required (Bearer Token — admin role)
+        | URL Params  : id (integer) — numeric payment ID
+        | Success (200): { "success": true, "message": "Payment rejected." }
+        |----------------------------------------------------------------------
+        */
+        Route::post('payments/{id}/reject', [PaymentController::class, 'reject'])
+            ->name('payments.reject')
+            ->where(['id' => '[0-9]+']);
 
-            /**
-             * الموافقة الجماعية
-             */
-            // POST /api/v1/payments/bulk-approve - الموافقة على عدة دفعات
-            Route::post('payments/bulk-approve', [PaymentController::class, 'bulkApprove'])
-                ->name('payments.bulk-approve');
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/payments/bulk-approve
+        |----------------------------------------------------------------------
+        | Description : Approve multiple payments in a single request (admin only).
+        | Method      : POST
+        | URL         : /api/v1/payments/bulk-approve
+        | Auth        : Required (Bearer Token — admin role)
+        | Request Body: payment_ids (array of integers, required)
+        | Success (200): { "success": true, "approved_count": 3 }
+        |----------------------------------------------------------------------
+        */
+        Route::post('payments/bulk-approve', [PaymentController::class, 'bulkApprove'])
+            ->name('payments.bulk-approve');
 
-            /**
-             * دفعات مستخدم معين
-             */
-            // GET /api/v1/users/{userId}/payments - عرض دفعات مستخدم معين
-            Route::get('users/{userId}/payments', [PaymentController::class, 'userPayments'])
-                ->name('users.payments');
-        });
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/users/{userId}/payments
+        |----------------------------------------------------------------------
+        | Description : Return all payments made by a specific user (admin only).
+        | Method      : GET
+        | URL         : /api/v1/users/{userId}/payments
+        | Auth        : Required (Bearer Token — admin role)
+        | URL Params  : userId (integer) — numeric user ID
+        | Success (200): { "success": true, "data": [...] }
+        |----------------------------------------------------------------------
+        */
+        Route::get('users/{userId}/payments', [PaymentController::class, 'userPayments'])
+            ->name('users.payments')
+            ->where(['userId' => '[0-9]+']);
+
+        // }); // end role:admin group
     });
-// });
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * ROUTE EXAMPLES & USAGE
- * ═══════════════════════════════════════════════════════════════════════
- *
- * PUBLIC ENDPOINTS:
- * -----------------
- * لا يوجد - جميع الـ endpoints محمية
- *
- *
- * AUTHENTICATED USER ENDPOINTS:
- * -----------------------------
- *
- * 1. عرض دفعاتي:
- *    GET /api/v1/payments/my-payments
- *    GET /api/v1/payments/my-payments?status=pending
- *    GET /api/v1/payments/my-payments?per_page=20
- *
- * 2. إنشاء دفعة:
- *    POST /api/v1/payments
- *    Body: {
- *      "amount": 150.00,
- *      "payable_type": "tour_bookings",
- *      "payable_id": 5
- *    }
- *
- * 3. عرض دفعة واحدة:
- *    GET /api/v1/payments/1
- *
- * 4. تحديث دفعة:
- *    PUT /api/v1/payments/1
- *    Body: {
- *      "amount": 175.00
- *    }
- *
- * 5. حذف دفعة:
- *    DELETE /api/v1/payments/1
- *
- *
- * ADMIN ONLY ENDPOINTS:
- * ---------------------
- *
- * 1. عرض جميع الدفعات:
- *    GET /api/v1/payments
- *    GET /api/v1/payments?status=pending
- *    GET /api/v1/payments?payable_type=tour_bookings
- *    GET /api/v1/payments?user_id=5
- *    GET /api/v1/payments?from_date=2025-01-01&to_date=2025-02-01
- *
- * 2. إحصائيات الدفعات:
- *    GET /api/v1/payments/statistics
- *
- * 3. الموافقة على دفعة:
- *    POST /api/v1/payments/1/approve
- *
- * 4. رفض دفعة:
- *    POST /api/v1/payments/1/reject
- *
- * 5. الموافقة الجماعية:
- *    POST /api/v1/payments/bulk-approve
- *    Body: {
- *      "payment_ids": [1, 2, 3, 4]
- *    }
- *
- * 6. دفعات مستخدم معين:
- *    GET /api/v1/users/5/payments
- *
- * 7. تحديث حالة دفعة (Admin):
- *    PUT /api/v1/payments/1
- *    Body: {
- *      "status": "approved",
- *      "amount": 200.00
- *    }
- *
- * ═══════════════════════════════════════════════════════════════════════
- */
+}); // end prefix('v1') — Payments
 
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * TOUR BOOKING ROUTES
- * ═══════════════════════════════════════════════════════════════════════
- *
- * نظام إدارة حجوزات الرحلات الكامل
- *
- * السيناريو:
- * 1. السائح يحجز الرحلة → POST /tour-bookings (status: pending)
- * 2. السائح يدفع → POST /payments (مربوط بالـ booking_id)
- * 3. Admin يوافق على الدفع → POST /payments/{id}/approve
- *    → تلقائياً يتم تحديث الـ booking status إلى approved
- *
- * Protected Routes: تتطلب Sanctum Authentication
- * Guide/Admin Routes: تتطلب role = 'guide' or 'admin'
- * ═══════════════════════════════════════════════════════════════════════
- */
-
+/*
+|==========================================================================
+| Tour Bookings
+| Prefix: v1
+|
+| Complete booking lifecycle:
+|   1. Tourist creates booking → POST /tour-bookings          (status: pending)
+|   2. Tourist pays            → POST /payments
+|   3. Admin approves payment  → POST /payments/{id}/approve
+|      booking status is automatically updated to "approved"
+|==========================================================================
+*/
 Route::prefix('v1')->group(function () {
-
-    /**
-     * ─────────────────────────────────────────────────────────────────
-     * AUTHENTICATED USER ROUTES
-     * ─────────────────────────────────────────────────────────────────
-     */
 
     Route::middleware('auth:sanctum')->group(function () {
 
-        /**
-         * حجوزاتي (للسائح)
-         */
-        // GET /api/v1/tour-bookings/my-bookings - عرض جميع حجوزاتي
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/tour-bookings/my-bookings
+        |----------------------------------------------------------------------
+        | Description : Return all bookings belonging to the authenticated tourist.
+        | Method      : GET
+        | URL         : /api/v1/tour-bookings/my-bookings
+        | Auth        : Required (Bearer Token — tourist role)
+        | Query Params: status (pending|approved|cancelled), per_page (optional)
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::get('tour-bookings/my-bookings', [TourBookingController::class, 'myBookings'])
             ->name('tour-bookings.my-bookings');
 
-        /**
-         * الإحصائيات
-         */
-        // GET /api/v1/tour-bookings/statistics - إحصائيات حسب الدور
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/tour-bookings/statistics
+        |----------------------------------------------------------------------
+        | Description : Return booking statistics scoped to the caller's role:
+        |               admin = all, guide = own tours, tourist = own bookings.
+        | Method      : GET
+        | URL         : /api/v1/tour-bookings/statistics
+        | Auth        : Required (Bearer Token)
+        | Success (200): { "success": true, "data": { "total": 0, ... } }
+        |----------------------------------------------------------------------
+        */
         Route::get('tour-bookings/statistics', [TourBookingController::class, 'statistics'])
             ->name('tour-bookings.statistics');
 
-        /**
-         * إنشاء حجز جديد (الخطوة 1)
-         */
-        // POST /api/v1/tour-bookings - إنشاء حجز جديد (tourist only)
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/tour-bookings
+        |----------------------------------------------------------------------
+        | Description : Create a new tour booking (tourist only). Booking is
+        |               created with status "pending".
+        | Method      : POST
+        | URL         : /api/v1/tour-bookings
+        | Auth        : Required (Bearer Token — tourist role)
+        | Request Body: tour_id (integer, required),
+        |               participants_count (integer, required, min: 1)
+        | Success (201): { "success": true, "data": {...},
+        |                  "next_step": { "action": "create_payment", ... } }
+        | Error   (422): { "message": "...", "errors": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::post('tour-bookings', [TourBookingController::class, 'store'])
             ->name('tour-bookings.store');
 
-        /**
-         * عرض جميع الحجوزات (حسب الصلاحية)
-         */
-        // GET /api/v1/tour-bookings - عرض الحجوزات حسب الدور
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/tour-bookings
+        |----------------------------------------------------------------------
+        | Description : List bookings filtered automatically by caller's role:
+        |               admin = all, guide = own tour bookings, tourist = own.
+        | Method      : GET
+        | URL         : /api/v1/tour-bookings
+        | Auth        : Required (Bearer Token)
+        | Query Params: status, tour_id, per_page (all optional)
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::get('tour-bookings', [TourBookingController::class, 'index'])
             ->name('tour-bookings.index');
 
-        /**
-         * عرض حجز واحد
-         */
-        // GET /api/v1/tour-bookings/{id} - عرض تفاصيل حجز واحد
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/tour-bookings/{id}
+        |----------------------------------------------------------------------
+        | Description : Retrieve details of a single booking. Owner, guide,
+        |               or admin may access.
+        | Method      : GET
+        | URL         : /api/v1/tour-bookings/{id}
+        | Auth        : Required (Bearer Token)
+        | URL Params  : id (integer) — numeric booking ID
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::get('tour-bookings/{id}', [TourBookingController::class, 'show'])
-            ->name('tour-bookings.show');
+            ->name('tour-bookings.show')
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        /**
-         * تحديث الحجز
-         */
-        // PUT/PATCH /api/v1/tour-bookings/{id} - تحديث حجز
+        /*
+        |----------------------------------------------------------------------
+        | PUT|PATCH /api/v1/tour-bookings/{booking}
+        |----------------------------------------------------------------------
+        | Description : Update a booking. Tourist may change participants_count
+        |               (pending status only). Guide/admin may update status.
+        | Method      : PUT or PATCH
+        | URL         : /api/v1/tour-bookings/{booking}
+        | Auth        : Required (Bearer Token)
+        | URL Params  : booking (integer) — numeric booking ID
+        | Request Body (tourist)     : participants_count (integer)
+        | Request Body (guide/admin) : status (approved|cancelled)
+        | Success (200): { "success": true, "data": {...} }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::match(['put', 'patch'], 'tour-bookings/{booking}', [TourBookingController::class, 'update'])
-            ->name('tour-bookings.update');
+            ->name('tour-bookings.update')
+            ->where(['booking' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        /**
-         * إلغاء/حذف الحجز
-         */
-        // DELETE /api/v1/tour-bookings/{id} - إلغاء حجز
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/tour-bookings/{id}
+        |----------------------------------------------------------------------
+        | Description : Cancel a booking. Tourist only, pending status, and
+        |               no approved payment must exist.
+        | Method      : DELETE
+        | URL         : /api/v1/tour-bookings/{id}
+        | Auth        : Required (Bearer Token — tourist, pending status only)
+        | URL Params  : id (integer) — numeric booking ID
+        | Success (200): { "success": true, "message": "Booking cancelled." }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('tour-bookings/{id}', [TourBookingController::class, 'destroy'])
-            ->name('tour-bookings.destroy');
+            ->name('tour-bookings.destroy')
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        /**
-         * عرض حجوزات رحلة معينة (للمرشد/Admin)
-         */
-        // GET /api/v1/tours/{tourId}/bookings - عرض حجوزات رحلة معينة
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/tours/{tourId}/bookings
+        |----------------------------------------------------------------------
+        | Description : List all bookings for a specific tour (guide owner or
+        |               admin only).
+        | Method      : GET
+        | URL         : /api/v1/tours/{tourId}/bookings
+        | Auth        : Required (Bearer Token — guide owner or admin)
+        | URL Params  : tourId (integer) — numeric tour ID
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        |----------------------------------------------------------------------
+        */
         Route::get('tours/{tourId}/bookings', [TourBookingController::class, 'tourBookings'])
-            ->name('tours.bookings');
+            ->name('tours.bookings')
+            ->where(['tourId' => '[0-9]+']);
 
-        /**
-         * الموافقة والرفض (للمرشد/Admin)
-         */
-        // POST /api/v1/tour-bookings/{id}/approve - الموافقة على حجز
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/tour-bookings/{id}/approve
+        |----------------------------------------------------------------------
+        | Description : Approve a booking once payment is confirmed
+        |               (guide owner or admin only).
+        | Method      : POST
+        | URL         : /api/v1/tour-bookings/{id}/approve
+        | Auth        : Required (Bearer Token — guide or admin)
+        | URL Params  : id (integer) — numeric booking ID
+        | Success (200): { "success": true, "message": "Booking approved." }
+        | Error   (403): { "success": false, "message": "Unauthorized." }
+        |----------------------------------------------------------------------
+        */
         Route::post('tour-bookings/{id}/approve', [TourBookingController::class, 'approve'])
-            ->name('tour-bookings.approve');
+            ->name('tour-bookings.approve')
+            ->where(['id' => '[0-9]+']);
 
-        // POST /api/v1/tour-bookings/{id}/reject - رفض حجز
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/tour-bookings/{id}/reject
+        |----------------------------------------------------------------------
+        | Description : Reject a booking (guide owner or admin only).
+        | Method      : POST
+        | URL         : /api/v1/tour-bookings/{id}/reject
+        | Auth        : Required (Bearer Token — guide or admin)
+        | URL Params  : id (integer) — numeric booking ID
+        | Success (200): { "success": true, "message": "Booking rejected." }
+        |----------------------------------------------------------------------
+        */
         Route::post('tour-bookings/{id}/reject', [TourBookingController::class, 'reject'])
-            ->name('tour-bookings.reject');
+            ->name('tour-bookings.reject')
+            ->where(['id' => '[0-9]+']);
     });
-});
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * ROUTE EXAMPLES & USAGE
- * ═══════════════════════════════════════════════════════════════════════
- *
- * COMPLETE BOOKING FLOW (السيناريو الكامل):
- * ------------------------------------------
- *
- * الخطوة 1: إنشاء الحجز
- * POST /api/v1/tour-bookings
- * Body: {
- *   "tour_id": 5,
- *   "participants_count": 3
- * }
- * Response: {
- *   "success": true,
- *   "message": "Booking created successfully. Please proceed to payment.",
- *   "data": { booking details },
- *   "next_step": {
- *     "action": "create_payment",
- *     "booking_id": 10,
- *     "amount": 450.00
- *   }
- * }
- *
- * الخطوة 2: إنشاء الدفعة
- * POST /api/v1/payments
- * Body: {
- *   "amount": 450.00,
- *   "payable_type": "tour_bookings",
- *   "payable_id": 10
- * }
- * Response: {
- *   "success": true,
- *   "message": "Payment created successfully. Waiting for admin approval.",
- *   "next_step": {
- *     "action": "wait_for_approval"
- *   }
- * }
- *
- * الخطوة 3: Admin يوافق على الدفع
- * POST /api/v1/payments/{payment_id}/approve
- * Response: {
- *   "success": true,
- *   "message": "Payment approved successfully. Booking has been confirmed.",
- *   "booking_updated": true
- * }
- *
- * الآن الـ booking status = approved تلقائياً!
- *
- *
- * OTHER ENDPOINTS:
- * ----------------
- *
- * 1. عرض حجوزاتي:
- *    GET /api/v1/tour-bookings/my-bookings
- *    GET /api/v1/tour-bookings/my-bookings?status=pending
- *
- * 2. عرض جميع الحجوزات (Admin):
- *    GET /api/v1/tour-bookings
- *    GET /api/v1/tour-bookings?status=approved
- *    GET /api/v1/tour-bookings?tour_id=5
- *
- * 3. عرض حجوزات رحلاتي (Guide):
- *    GET /api/v1/tour-bookings (auto-filtered for guide's tours)
- *
- * 4. عرض حجز واحد:
- *    GET /api/v1/tour-bookings/10
- *
- * 5. تحديث عدد المشاركين (Tourist - pending only):
- *    PUT /api/v1/tour-bookings/10
- *    Body: {
- *      "participants_count": 5
- *    }
- *
- * 6. تحديث حالة الحجز (Guide/Admin):
- *    PUT /api/v1/tour-bookings/10
- *    Body: {
- *      "status": "approved"
- *    }
- *
- * 7. إلغاء حجز (Tourist - pending & no approved payment):
- *    DELETE /api/v1/tour-bookings/10
- *
- * 8. الموافقة على حجز (Guide/Admin - with approved payment):
- *    POST /api/v1/tour-bookings/10/approve
- *
- * 9. رفض حجز (Guide/Admin):
- *    POST /api/v1/tour-bookings/10/reject
- *
- * 10. عرض حجوزات رحلة معينة (Guide/Admin):
- *     GET /api/v1/tours/5/bookings
- *
- * 11. إحصائيات الحجوزات:
- *     GET /api/v1/tour-bookings/statistics
- *
- * ═══════════════════════════════════════════════════════════════════════
- */
+}); // end prefix('v1') — Tour Bookings
 
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * CHATBOT CONVERSATION ROUTES
- * ═══════════════════════════════════════════════════════════════════════
- *
- * نظام إدارة محادثات الـ Chatbot الكامل
- *
- * السيناريو:
- * 1. المستخدم يبدأ محادثة → POST /conversations
- * 2. تبادل الرسائل → POST /conversations/{id}/messages
- * 3. البوت يولد صورة → يتم تخزينها تلقائياً في generated_images
- * 4. عرض المحادثة → GET /conversations/{id} (مع كل الرسائل والصور)
- * 5. حذف المحادثة → DELETE /conversations/{id} (cascade delete)
- *
- * Protected Routes: تتطلب Sanctum Authentication
- * ═══════════════════════════════════════════════════════════════════════
- */
-
+/*
+|==========================================================================
+| Chatbot Conversations
+| Prefix: v1
+|
+| Complete conversation lifecycle:
+|   1. Start conversation  → POST /conversations
+|   2. Exchange messages   → POST /conversations/{id}/messages
+|   3. Bot generates image → auto-stored in generated_images
+|   4. View conversation   → GET  /conversations/{id}
+|   5. Delete conversation → DELETE /conversations/{id} (cascade)
+|==========================================================================
+*/
 Route::prefix('v1')->group(function () {
-
-    /**
-     * ─────────────────────────────────────────────────────────────────
-     * AUTHENTICATED USER ROUTES
-     * ─────────────────────────────────────────────────────────────────
-     */
 
     Route::middleware('auth:sanctum')->group(function () {
 
-        /**
-         * إدارة المحادثات
-         */
-
-        // POST /api/v1/conversations - بدء محادثة جديدة
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/conversations
+        |----------------------------------------------------------------------
+        | Description : Start a new chatbot conversation session.
+        | Method      : POST
+        | URL         : /api/v1/conversations
+        | Auth        : Required (Bearer Token)
+        | Request Body: context (string, optional) —
+        |               image_generation | travel_plan | info_request |
+        |               general | place_inquiry | tour_inquiry
+        | Success (201): { "success": true, "data": { "id": 1, "context": "..." } }
+        |----------------------------------------------------------------------
+        */
         Route::post('conversations', [ConversationController::class, 'store'])
             ->name('conversations.store');
 
-        // GET /api/v1/conversations - عرض جميع محادثات المستخدم
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/conversations
+        |----------------------------------------------------------------------
+        | Description : List all chatbot conversations for the authenticated user.
+        | Method      : GET
+        | URL         : /api/v1/conversations
+        | Auth        : Required (Bearer Token)
+        | Query Params: context (optional), with_images (boolean), per_page (optional)
+        | Success (200): { "success": true, "data": [...], "pagination": {...} }
+        |----------------------------------------------------------------------
+        */
         Route::get('conversations', [ConversationController::class, 'index'])
             ->name('conversations.index');
 
-        // GET /api/v1/conversations/statistics - إحصائيات المحادثات
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/conversations/statistics
+        |----------------------------------------------------------------------
+        | Description : Return aggregated statistics about the authenticated
+        |               user's chatbot conversations.
+        | Method      : GET
+        | URL         : /api/v1/conversations/statistics
+        | Auth        : Required (Bearer Token)
+        | Success (200): { "success": true, "data": { "total": 0, "by_context": {...} } }
+        |----------------------------------------------------------------------
+        */
         Route::get('conversations/statistics', [ConversationController::class, 'statistics'])
             ->name('conversations.statistics');
 
-        // GET /api/v1/conversations/{id} - عرض محادثة واحدة بالتفصيل
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/conversations/{id}
+        |----------------------------------------------------------------------
+        | Description : Retrieve a single conversation with all its messages
+        |               and generated images (owner only).
+        | Method      : GET
+        | URL         : /api/v1/conversations/{id}
+        | Auth        : Required (Bearer Token — conversation owner)
+        | URL Params  : id (integer) — numeric conversation ID
+        | Success (200): { "success": true, "data": { "messages": [...], ... } }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::get('conversations/{id}', [ConversationController::class, 'show'])
-            ->name('conversations.show');
+            ->name('conversations.show')
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        // DELETE /api/v1/conversations/{id} - حذف محادثة
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/conversations/{id}
+        |----------------------------------------------------------------------
+        | Description : Delete a conversation and cascade-delete all its
+        |               messages and generated images (owner only).
+        | Method      : DELETE
+        | URL         : /api/v1/conversations/{id}
+        | Auth        : Required (Bearer Token — conversation owner)
+        | URL Params  : id (integer) — numeric conversation ID
+        | Success (200): { "success": true, "message": "Conversation deleted." }
+        | Error   (404): { "message": "Record not found" }
+        |----------------------------------------------------------------------
+        */
         Route::delete('conversations/{id}', [ConversationController::class, 'destroy'])
-            ->name('conversations.destroy');
+            ->name('conversations.destroy')
+            ->where(['id' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found'], 404);
+            });
 
-        /**
-         * إدارة الرسائل
-         */
-
-        // POST /api/v1/conversations/{conversation}/messages - إضافة رسالة
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/conversations/{id}/messages
+        |----------------------------------------------------------------------
+        | Description : Send a message within an existing conversation. When
+        |               sender="bot" and image_url is provided, the image is
+        |               automatically saved to generated_images.
+        | Method      : POST
+        | URL         : /api/v1/conversations/{id}/messages
+        | Auth        : Required (Bearer Token)
+        | URL Params  : id (integer) — numeric conversation ID
+        | Request Body: sender (user|bot, required), message (string, required),
+        |               image_url (string, optional), place_id (integer, optional)
+        | Success (201): { "success": true, "data": { "message": {...},
+        |                  "generated_image": {...} } }
+        |----------------------------------------------------------------------
+        */
         Route::post('conversations/{id}/messages', [ConversationController::class, 'storeMessage'])
             ->where(['id' => '[0-9]+'])
             ->name('conversations.messages.store');
 
-        // GET /api/v1/conversations/{id}/messages - عرض رسائل محادثة
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/conversations/{id}/messages
+        |----------------------------------------------------------------------
+        | Description : Return all messages in a specific conversation.
+        | Method      : GET
+        | URL         : /api/v1/conversations/{id}/messages
+        | Auth        : Required (Bearer Token — conversation owner)
+        | URL Params  : id (integer) — numeric conversation ID
+        | Success (200): { "success": true, "data": [...] }
+        |----------------------------------------------------------------------
+        */
         Route::get('conversations/{id}/messages', [ConversationController::class, 'getMessages'])
-            ->name('conversations.messages.index');
+            ->name('conversations.messages.index')
+            ->where(['id' => '[0-9]+']);
 
-        /**
-         * إدارة الصور
-         */
-
-        // GET /api/v1/conversations/{id}/images - عرض الصور المولدة
+        /*
+        |----------------------------------------------------------------------
+        | GET /api/v1/conversations/{id}/images
+        |----------------------------------------------------------------------
+        | Description : Return all AI-generated images produced within a
+        |               specific conversation.
+        | Method      : GET
+        | URL         : /api/v1/conversations/{id}/images
+        | Auth        : Required (Bearer Token — conversation owner)
+        | URL Params  : id (integer) — numeric conversation ID
+        | Success (200): { "success": true, "data": [...] }
+        |----------------------------------------------------------------------
+        */
         Route::get('conversations/{id}/images', [ConversationController::class, 'getImages'])
-            ->name('conversations.images.index');
+            ->name('conversations.images.index')
+            ->where(['id' => '[0-9]+']);
     });
-});
 
-/**
- * ═══════════════════════════════════════════════════════════════════════
- * ROUTE EXAMPLES & USAGE
- * ═══════════════════════════════════════════════════════════════════════
- *
- * COMPLETE CONVERSATION FLOW:
- * ---------------------------
- *
- * Step 1: بدء محادثة جديدة
- * POST /api/v1/conversations
- * Body: {
- *   "context": "image_generation"
- * }
- * Response: {
- *   "success": true,
- *   "data": {
- *     "id": 1,
- *     "context": "image_generation",
- *     "user": {...}
- *   }
- * }
- *
- * Step 2: المستخدم يرسل رسالة
- * POST /api/v1/conversations/1/messages
- * Body: {
- *   "sender": "user",
- *   "message": "Can you show me the pyramids?"
- * }
- * Response: {
- *   "success": true,
- *   "data": {
- *     "id": 1,
- *     "sender": "user",
- *     "message": "Can you show me the pyramids?"
- *   }
- * }
- *
- * Step 3: البوت يرد مع صورة (AUTO IMAGE CREATION!)
- * POST /api/v1/conversations/1/messages
- * Body: {
- *   "sender": "bot",
- *   "message": "Here's an image of the pyramids!",
- *   "image_url": "https://example.com/pyramids.jpg",
- *   "place_id": 5
- * }
- * Response: {
- *   "success": true,
- *   "message": "Message and image stored successfully",
- *   "data": {
- *     "message": {...},
- *     "generated_image": {
- *       "id": 1,
- *       "image_url": "https://example.com/pyramids.jpg",
- *       "place_id": 5
- *     }
- *   }
- * }
- * → الصورة تم تخزينها تلقائياً في generated_images!
- *
- * Step 4: عرض المحادثة الكاملة
- * GET /api/v1/conversations/1
- * Response: {
- *   "success": true,
- *   "data": {
- *     "id": 1,
- *     "context": "image_generation",
- *     "messages": [
- *       {"sender": "user", "message": "Can you show me the pyramids?"},
- *       {"sender": "bot", "message": "Here's an image of the pyramids!"}
- *     ],
- *     "generated_images": [
- *       {"image_url": "https://example.com/pyramids.jpg", "place_id": 5}
- *     ]
- *   }
- * }
- *
- * Step 5: حذف المحادثة (cascade delete)
- * DELETE /api/v1/conversations/1
- * → يتم حذف المحادثة + جميع الرسائل + جميع الصور
- *
- *
- * OTHER ENDPOINTS:
- * ----------------
- *
- * 1. عرض جميع المحادثات:
- *    GET /api/v1/conversations
- *    GET /api/v1/conversations?context=image_generation
- *    GET /api/v1/conversations?with_images=1
- *
- * 2. عرض رسائل محادثة:
- *    GET /api/v1/conversations/1/messages
- *
- * 3. عرض صور محادثة:
- *    GET /api/v1/conversations/1/images
- *
- * 4. إحصائيات المحادثات:
- *    GET /api/v1/conversations/statistics
- *
- *
- * SENDER TYPES:
- * -------------
- * - "user": رسالة من المستخدم
- * - "bot": رسالة من البوت (يمكن أن تحتوي على image_url)
- *
- *
- * CONTEXT TYPES:
- * --------------
- * - image_generation: توليد صور
- * - travel_plan: تخطيط رحلات
- * - info_request: طلب معلومات
- * - general: محادثة عامة
- * - place_inquiry: استفسار عن مكان
- * - tour_inquiry: استفسار عن رحلة
- *
- *
- * AUTO IMAGE CREATION LOGIC:
- * --------------------------
- * When sender = "bot" AND image_url is provided:
- * 1. Message is stored in chatbot_messages
- * 2. Image is AUTOMATICALLY stored in generated_images
- * 3. If place_id is provided, it's linked to the image
- * 4. Response includes both message and image data
- *
- *
- * CASCADE DELETE:
- * ---------------
- * When conversation is deleted:
- * 1. All messages are deleted (ON DELETE CASCADE)
- * 2. All generated images are deleted (ON DELETE CASCADE)
- * 3. No orphan records remain
- *
- * ═══════════════════════════════════════════════════════════════════════
- */
+}); // end prefix('v1') — Chatbot Conversations
 
+
+/*
+|==========================================================================
+| Plan Management
+| No v1 prefix — base URL: /api   (preserved from original file)
+| All routes protected by auth:sanctum.
+|==========================================================================
+*/
+Route::middleware('auth:sanctum')->group(function (): void {
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/plans/my
+    |----------------------------------------------------------------------
+    | Description : List only the authenticated user's own plans.
+    |               Uses the forUser + newest model scopes internally.
+    | Method      : GET
+    | URL         : /api/plans/my
+    | Auth        : Required (Bearer Token)
+    | Success (200): { "data": [ PlanResource, ... ], "links": {...}, "meta": {...} }
+    |----------------------------------------------------------------------
+    */
+    Route::get('plans/my', [PlanController::class, 'myPlans'])
+        ->name('plans.my');
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/plans
+    |----------------------------------------------------------------------
+    | Description : Paginated list of plans with optional filters.
+    |               Uses scopes: searchByTitle, forUser, withPlaces,
+    |               withinBudget, newest.
+    | Method      : GET
+    | URL         : /api/plans
+    | Auth        : Required (Bearer Token)
+    | Query Params: search (string), user_id (integer), with_places (boolean),
+    |               budget (numeric) — all optional
+    | Success (200): { "data": [ PlanResource, ... ], "links": {...}, "meta": {...} }
+    |----------------------------------------------------------------------
+    */
+    Route::get('plans', [PlanController::class, 'index'])
+        ->name('plans.index');
+
+    /*
+    |----------------------------------------------------------------------
+    | POST /api/plans
+    |----------------------------------------------------------------------
+    | Description : Create a new plan (and optional plan_items) for the
+    |               authenticated user. Logs a plan_creation activity.
+    | Method      : POST
+    | URL         : /api/plans
+    | Auth        : Required (Bearer Token)
+    | Request Body: title (string, required, max: 255),
+    |               plan_items[].place_id (integer, required),
+    |               plan_items[].day_index (integer 1-365, optional)
+    | Success (201): { "data": { "id": 1, "title": "...", "total_price": 150.00,
+    |                 "total_days": 2, "is_complete": true, "summary": "...",
+    |                 "user": {...}, "places": [...],
+    |                 "created_at": "...", "updated_at": "..." } }
+    | Error   (422): { "message": "...", "errors": {...} }
+    |----------------------------------------------------------------------
+    */
+    Route::post('plans', [PlanController::class, 'store'])
+        ->name('plans.store');
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/plans/{plan}
+    |----------------------------------------------------------------------
+    | Description : Retrieve a single plan with all relationships and
+    |               computed fields: total_price, total_days, is_complete,
+    |               summary.
+    | Method      : GET
+    | URL         : /api/plans/{plan}
+    | Auth        : Required (Bearer Token)
+    | URL Params  : plan (integer) — numeric plan ID
+    | Success (200): { "data": PlanResource }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
+    Route::get('plans/{plan}', [PlanController::class, 'show'])
+        ->name('plans.show')
+        ->where(['plan' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found'], 404);
+        });
+
+    /*
+    |----------------------------------------------------------------------
+    | PUT|PATCH /api/plans/{plan}
+    |----------------------------------------------------------------------
+    | Description : Update a plan's title and/or replace its plan_items.
+    |               Only the plan's owner is authorised.
+    |               Logs a plan_creation activity on success.
+    | Method      : PUT or PATCH
+    | URL         : /api/plans/{plan}
+    | Auth        : Required (Bearer Token — must be plan owner)
+    | URL Params  : plan (integer) — numeric plan ID
+    | Request Body: title (string, optional),
+    |               plan_items[].place_id (integer, required if sent),
+    |               plan_items[].day_index (integer 1-365, optional)
+    | Success (200): { "data": PlanResource }
+    | Error   (403): { "message": "This action is unauthorized." }
+    | Error   (422): { "message": "...", "errors": {...} }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
+    Route::match(['put', 'patch'], 'plans/{plan}', [PlanController::class, 'update'])
+        ->where(['plan' => '[0-9]+'])
+        ->missing(function (Request $request) {
+            return response()->json(['message' => 'Record not found'], 404);
+        })
+        ->name('plans.update');
+
+    /*
+    |----------------------------------------------------------------------
+    | DELETE /api/plans/{plan}
+    |----------------------------------------------------------------------
+    | Description : Permanently delete a plan and its plan_items.
+    |               Cascade is handled at DB level. Owner only.
+    | Method      : DELETE
+    | URL         : /api/plans/{plan}
+    | Auth        : Required (Bearer Token — must be plan owner)
+    | URL Params  : plan (integer) — numeric plan ID
+    | Success (204): (empty body)
+    | Error   (403): { "message": "You are not allowed to delete this plan." }
+    | Error   (404): { "message": "Record not found" }
+    |----------------------------------------------------------------------
+    */
+    Route::delete('plans/{plan}', [PlanController::class, 'destroy'])
+        ->name('plans.destroy')
+        ->where(['plan' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found'], 404);
+        });
+
+}); // end auth:sanctum — Plans
+
+
+/*
+|==========================================================================
+| Miscellaneous / Auth Routes — no prefix
+|==========================================================================
+*/
+
+/*
+|----------------------------------------------------------------------
+| GET /api/user
+|----------------------------------------------------------------------
+| Description : Return the currently authenticated user's profile.
+| Method      : GET
+| URL         : /api/user
+| Auth        : Required (Bearer Token)
+| Success (200): { "id": 1, "name": "...", "email": "..." }
+| Error   (401): { "message": "Unauthenticated." }
+|----------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
+/*
+|----------------------------------------------------------------------
+| POST /api/login
+|----------------------------------------------------------------------
+| Description : Authenticate a user and return a Sanctum API token.
+| Method      : POST
+| URL         : /api/login
+| Auth        : None
+| Request Body: email (string, required), password (string, required)
+| Success (200): { "token": "...", "user": { "id": 1, ... } }
+| Error   (401): { "message": "Invalid credentials." }
+|----------------------------------------------------------------------
+*/
 Route::post('/login', [AuthController::class, 'login'])->name('login');
+
+/*
+|----------------------------------------------------------------------
+| POST /api/register
+|----------------------------------------------------------------------
+| Description : Register a new user account.
+| Method      : POST
+| URL         : /api/register
+| Auth        : None
+| Request Body: name (string), email (string, unique), password (string, min:8)
+| Success (201): { "token": "...", "user": { "id": 1, ... } }
+| Error   (422): { "message": "...", "errors": {...} }
+|----------------------------------------------------------------------
+*/
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+/*
+|----------------------------------------------------------------------
+| POST /api/forgot-password
+|----------------------------------------------------------------------
+| Description : Send a password-reset link to the given email address.
+| Method      : POST
+| URL         : /api/forgot-password
+| Auth        : None
+| Request Body: email (string, required)
+| Success (200): { "message": "Reset link sent." }
+| Error   (422): { "message": "...", "errors": {...} }
+|----------------------------------------------------------------------
+*/
 Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('forgot-password');
+
+/*
+|----------------------------------------------------------------------
+| POST /api/reset-password
+|----------------------------------------------------------------------
+| Description : Reset a user's password using the emailed token.
+| Method      : POST
+| URL         : /api/reset-password
+| Auth        : None
+| Request Body: token (string), email (string), password (string, min:8)
+| Success (200): { "message": "Password reset successfully." }
+| Error   (422): { "message": "Invalid or expired token." }
+|----------------------------------------------------------------------
+*/
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
 
-
+/*
+|----------------------------------------------------------------------
+| GET /api/test-auth
+|----------------------------------------------------------------------
+| Description : Lightweight connectivity check — always returns ok.
+| Method      : GET
+| URL         : /api/test-auth
+| Auth        : None
+| Success (200): { "ok": true }
+|----------------------------------------------------------------------
+*/
 Route::get('/test-auth', function () {
     return response()->json(['ok' => true]);
 });

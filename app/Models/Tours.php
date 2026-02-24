@@ -14,6 +14,7 @@ class Tours extends Model
         'price',
         'start_date',
         'start_time',
+        'plan_id',
         'payment_method',
         'details',
     ];
@@ -50,6 +51,9 @@ class Tours extends Model
         return $this->belongsToMany(Places::class, 'tour_places', 'tour_id', 'place_id')
                     ->withPivot('sequence')
                     ->orderBy('sequence');
+    }
+    public function plan() {
+        return $this->belongsTo(Plans::class, 'plan_id', 'id');
     }
 
     /**

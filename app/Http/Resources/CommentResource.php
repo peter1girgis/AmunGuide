@@ -6,11 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * CommentResource - تحويل Comment model إلى JSON
+ * CommentResource - Convert Comment model to JSON
  *
- * ✅ تنسيق البيانات للـ API response
- * ✅ عرض معلومات المستخدم (مختصرة)
- * ✅ تاريخ التعليق
+ * ✅ Format data for API response
+ * ✅ Display user information (abbreviated)
+ * ✅ Comment date
  */
 class CommentResource extends JsonResource
 {
@@ -27,7 +27,7 @@ class CommentResource extends JsonResource
             'content' => $this->content,
 
             // ──────────────────────────────────────────────────
-            // User Information (الي اضاف التعليق)
+            // User Information (who added the comment)
             // ──────────────────────────────────────────────────
             'user' => [
                 'id' => $this->user->id,
@@ -38,19 +38,19 @@ class CommentResource extends JsonResource
             ],
 
             // ──────────────────────────────────────────────────
-            // Commentable Information (الموضوع اللي اتعلق عليه)
+            // Commentable Information (the topic that was commented on)
             // ──────────────────────────────────────────────────
             'commentable_type' => $this->commentable_type,
             'commentable_id' => $this->commentable_id,
 
             // ──────────────────────────────────────────────────
-            // Metadata (معلومات عامة)
+            // Metadata (general information)
             // ──────────────────────────────────────────────────
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
 
             // ──────────────────────────────────────────────────
-            // Is user the owner? (حق المستخدم في التعديل)
+            // Is user the owner? (user's right to edit)
             // ──────────────────────────────────────────────────
             'is_owner' => $this->when(
                 auth('sanctum')->check(),

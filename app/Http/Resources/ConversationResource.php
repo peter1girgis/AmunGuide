@@ -19,21 +19,21 @@ class ConversationResource extends JsonResource
             'context' => $this->context,
             'context_label' => $this->getContextLabel(),
 
-            // معلومات المستخدم
+            // User information
             'user' => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 'email' => $this->user->email,
             ],
 
-            // إحصائيات المحادثة
+            // Conversation statistics
             'statistics' => [
                 'messages_count' => $this->getMessagesCount(),
                 'images_count' => $this->getImagesCount(),
                 'has_images' => $this->hasImages(),
             ],
 
-            // آخر رسالة
+            // Last message
             'last_message' => $this->when(
                 $this->getLastMessage(),
                 function () {
@@ -46,7 +46,7 @@ class ConversationResource extends JsonResource
                 }
             ),
 
-            // التواريخ
+            // Dates
             'created_at' => $this->created_at->toDateTimeString(),
             'created_at_human' => $this->created_at->diffForHumans(),
             'updated_at' => $this->updated_at->toDateTimeString(),
@@ -54,7 +54,7 @@ class ConversationResource extends JsonResource
     }
 
     /**
-     * الحصول على تسمية السياق
+     * Get context label
      */
     private function getContextLabel(): string
     {

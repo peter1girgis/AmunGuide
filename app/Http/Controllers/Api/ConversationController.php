@@ -15,38 +15,38 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * ConversationController - إدارة محادثات الـ Chatbot
+ * ConversationController - Chatbot Conversations Management
  *
- * السيناريو:
- * 1. المستخدم يبدأ محادثة جديدة
- * 2. تبادل الرسائل بين المستخدم والبوت
- * 3. البوت قد يولد صور أثناء المحادثة
- * 4. تخزين الصور تلقائياً عند إرسال رسالة من البوت مع image_url
+ * Scenario:
+ * 1. User starts a new conversation
+ * 2. Message exchange between user and bot
+ * 3. Bot may generate images during conversation
+ * 4. Images are stored automatically when sending message from bot with image_url
  *
- * ✅ بدء محادثة جديدة
- * ✅ عرض جميع المحادثات للمستخدم
- * ✅ عرض محادثة واحدة بالتفصيل (Eager Loading)
- * ✅ إضافة رسالة مع تخزين صورة تلقائياً
- * ✅ حذف محادثة (cascade delete)
+ * ✅ Start a new conversation
+ * ✅ Display all conversations for user
+ * ✅ Display one conversation in detail (Eager Loading)
+ * ✅ Add message with automatic image storage
+ * ✅ Delete conversation (cascade delete)
  */
 class ConversationController extends Controller
 {
     /**
      * POST /api/v1/conversations
-     * بدء محادثة جديدة
+     * Start a new conversation
      */
     public function store(StoreConversationRequest $request): JsonResponse
     {
         try {
             $validated = $request->validated();
 
-            // إنشاء المحادثة
+            // Create conversation
             $conversation = Chatbot_conversations::startConversation(
                 userId: auth('sanctum')->id(),
                 context: $validated['context'] ?? null
             );
 
-            // تحميل العلاقات
+            // Load relationships
             $conversation->load('user');
 
             return response()->json([
@@ -65,7 +65,7 @@ class ConversationController extends Controller
 
     /**
      * GET /api/v1/conversations
-     * عرض جميع محادثات المستخدم الحالي
+     * Display all conversations for current user
      */
     public function index(Request $request): JsonResponse
     {
@@ -83,17 +83,17 @@ class ConversationController extends Controller
             $query = Chatbot_conversations::with(['user'])
                 ->where('user_id', $userId);
 
-            // فلترة حسب السياق
+            // Filter by context
             if ($request->has('context')) {
                 $query->where('context', $request->context);
             }
 
-            // فلترة المحادثات التي تحتوي على صور
+            // Filter conversations containing images
             if ($request->boolean('with_images')) {
                 $query->withImages();
             }
 
-            // ترتيب النتائج
+            // Sort results
             $query->latest();
 
             // Pagination
@@ -122,20 +122,20 @@ class ConversationController extends Controller
 
     /**
      * GET /api/v1/conversations/{id}
-     * عرض محادثة واحدة بالتفصيل (مع جميع الرسائل والصور)
+     * Display one conversation in detail (with all messages and images)
      *
      * Eager Loading: messages, generatedImages, user
      */
     public function show($id): JsonResponse
     {
         try {
-            // Eager Loading لجميع العلاقات المطلوبة
+            // Eager Loading for all required relationships
             $conversation = Chatbot_conversations::with([
                 'user',
                 'messages' => function ($query) {
-                    $query->oldest(); // ترتيب الرسائل زمنياً
+                    $query->oldest(); // Sort messages chronologically
                 },
-                'generatedImages.place' // تحميل الصور مع المكان المرتبط
+                'generatedImages.place' // Load images with related place
             ])->find($id);
 
             if (!$conversation) {
@@ -146,7 +146,7 @@ class ConversationController extends Controller
                 ], 404);
             }
 
-            // التحقق من الصلاحية
+            // Check authorization
             $user = auth('sanctum')->user();
             if (!$user) {
                 return response()->json([
@@ -179,11 +179,11 @@ class ConversationController extends Controller
 
     /**
      * POST /api/v1/conversations/{id}/messages
-     * إضافة رسالة جديدة إلى المحادثة
+     * Add a new message to the conversation
      *
-     * Logic الخاص:
-     * - إذا كان sender = 'bot' و تم إرسال image_url
-     * - يتم إنشاء سجل تلقائياً في جدول generated_images
+     * Special Logic:
+     * - If sender = 'bot' and image_url is sent
+     * - A record is automatically created in generated_images table
      */
     public function storeMessage(StoreMessageRequest $request, $id): JsonResponse
     {
@@ -198,23 +198,23 @@ class ConversationController extends Controller
         try {
             $validated = $request->validated();
 
-            // إنشاء الرسالة
+            // Create message
             $message = Chatbot_messages::createMessage(
                 conversationId: $conversation->id,
                 sender: $validated['sender'],
                 message: $validated['message']
             );
 
-            // Logic الخاص: إذا كان البوت يرسل صورة
+            // Special Logic: If bot sends an image
             if ($validated['sender'] === 'bot' && isset($validated['image_url'])) {
-                // إنشاء سجل الصورة تلقائياً
+                // Create image record automatically
                 $generatedImage = Generated_images::createImage(
                     conversationId: $conversation->id,
                     imageUrl: $validated['image_url'],
                     placeId: $validated['place_id'] ?? null
                 );
 
-                // إرجاع الرسالة مع معلومات الصورة
+                // Return message with image information
                 return response()->json([
                     'success' => true,
                     'message' => 'Message and image stored successfully',
@@ -230,7 +230,7 @@ class ConversationController extends Controller
                 ], 201);
             }
 
-            // رسالة عادية بدون صورة
+            // Regular message without image
             return response()->json([
                 'success' => true,
                 'message' => 'Message stored successfully',
@@ -247,9 +247,9 @@ class ConversationController extends Controller
 
     /**
      * DELETE /api/v1/conversations/{id}
-     * حذف المحادثة
+     * Delete the conversation
      *
-     * Cascade Delete: سيتم حذف جميع الرسائل والصور تلقائياً
+     * Cascade Delete: All messages and images will be deleted automatically
      */
     public function destroy($id): JsonResponse
     {
@@ -266,7 +266,7 @@ class ConversationController extends Controller
 
             $user = auth('sanctum')->user();
 
-            // التحقق من الصلاحية
+            // Check authorization
             if (!$user || !$conversation->belongsToUser($user->id)) {
                 return response()->json([
                     'success' => false,
@@ -275,13 +275,13 @@ class ConversationController extends Controller
                 ], 403);
             }
 
-            // حفظ الإحصائيات قبل الحذف
+            // Save statistics before deletion
             $stats = [
                 'messages_deleted' => $conversation->getMessagesCount(),
                 'images_deleted' => $conversation->getImagesCount(),
             ];
 
-            // الحذف (cascade سيحذف الرسائل والصور تلقائياً)
+            // Delete (cascade will automatically delete messages and images)
             $conversation->delete();
 
             return response()->json([
@@ -300,7 +300,7 @@ class ConversationController extends Controller
 
     /**
      * GET /api/v1/conversations/{id}/messages
-     * عرض رسائل محادثة معينة فقط
+     * Display messages from a specific conversation only
      */
     public function getMessages($id): JsonResponse
     {
@@ -346,7 +346,7 @@ class ConversationController extends Controller
 
     /**
      * GET /api/v1/conversations/{id}/images
-     * عرض الصور المولدة في محادثة معينة
+     * Display images generated in a specific conversation
      */
     public function getImages($id): JsonResponse
     {
@@ -395,7 +395,7 @@ class ConversationController extends Controller
 
     /**
      * GET /api/v1/conversations/statistics
-     * إحصائيات شاملة لمحادثات المستخدم
+     * Comprehensive statistics for user conversations
      */
     public function statistics(): JsonResponse
     {
@@ -411,7 +411,7 @@ class ConversationController extends Controller
             $userId = auth('sanctum')->id();
             $stats = Chatbot_conversations::getUserStats($userId);
 
-            // إضافة إحصائيات إضافية
+            // Add additional statistics
             $conversations = Chatbot_conversations::where('user_id', $userId)->get();
 
             $contextBreakdown = $conversations->groupBy('context')->map(function ($group) {

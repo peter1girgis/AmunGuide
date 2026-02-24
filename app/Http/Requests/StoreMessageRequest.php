@@ -23,7 +23,7 @@ class StoreMessageRequest extends FormRequest
             return false;
         }
 
-        // المستخدم يمكنه إضافة رسائل لمحادثاته فقط
+        // User can only add messages to their own conversations
         return $conversation->user_id === $user->id;
     }
 
@@ -44,7 +44,7 @@ class StoreMessageRequest extends FormRequest
                 'min:1',
                 'max:5000',
             ],
-            // هذه الحقول اختيارية، تستخدم فقط إذا كان sender = bot
+            // These fields are optional, used only if sender = bot
             'image_url' => [
                 'nullable',
                 'string',
@@ -91,9 +91,9 @@ class StoreMessageRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            // إذا كان sender = bot و تم إرسال image_url، نتحقق من صحة البيانات
+            // If sender = bot and image_url is sent, check data validity
             if ($this->input('sender') === 'bot' && $this->has('image_url')) {
-                // التحقق من أن image_url ليس فارغاً
+                // Check that image_url is not empty
                 if (empty($this->input('image_url'))) {
                     $validator->errors()->add(
                         'image_url',
@@ -102,7 +102,7 @@ class StoreMessageRequest extends FormRequest
                 }
             }
 
-            // إذا تم إرسال place_id، يجب أن يكون مع image_url
+            // If place_id is sent, it must be with image_url
             if ($this->has('place_id') && !$this->has('image_url')) {
                 $validator->errors()->add(
                     'place_id',
@@ -130,7 +130,7 @@ class StoreMessageRequest extends FormRequest
      */
     protected function prepareForValidation()
     {
-        // تنظيف البيانات قبل Validation
+        // Clean data before validation
         if ($this->has('sender')) {
             $this->merge([
                 'sender' => strtolower(trim($this->input('sender'))),

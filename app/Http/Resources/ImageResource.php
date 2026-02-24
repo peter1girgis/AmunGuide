@@ -20,7 +20,7 @@ class ImageResource extends JsonResource
             'image_url' => $this->image_url,
             'full_image_url' => $this->getFullImageUrl(),
 
-            // معلومات المكان (إذا كان مرتبطاً)
+            // Place information (if related)
             'place' => $this->when(
                 $this->hasPlace() && $this->relationLoaded('place'),
                 function () {

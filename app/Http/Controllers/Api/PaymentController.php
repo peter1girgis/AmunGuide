@@ -14,27 +14,27 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * PaymentController - إدارة الدفعات
+ * PaymentController - Payments Management
  *
- * ✅ إنشاء دفعة جديدة
- * ✅ عرض جميع الدفعات (للـ Admin)
- * ✅ عرض دفعات المستخدم الحالي
- * ✅ عرض دفعة واحدة
- * ✅ تحديث الدفعة (المبلغ للمستخدم، الحالة للـ Admin)
- * ✅ حذف الدفعة
- * ✅ الموافقة على الدفعة (Admin)
- * ✅ رفض الدفعة (Admin)
- * ✅ إحصائيات الدفعات
+ * ✅ Create a new payment
+ * ✅ Display all payments (for Admin)
+ * ✅ Display current user payments
+ * ✅ Display one payment
+ * ✅ Update payment (amount for user, status for Admin)
+ * ✅ Delete payment
+ * ✅ Approve payment (Admin)
+ * ✅ Reject payment (Admin)
+ * ✅ Payment statistics
  */
 class PaymentController extends Controller
 {
     /**
      * GET /api/v1/payments
-     * عرض جميع الدفعات (Admin فقط)
+     * Display all payments (Admin only)
      */
     public function index(Request $request): JsonResponse
     {
-        // التحقق من صلاحية Admin
+        // Check Admin authorization
         if (!auth('sanctum')->check() || auth('sanctum')->user()->role !== 'admin') {
             return response()->json([
                 'success' => false,
@@ -44,14 +44,14 @@ class PaymentController extends Controller
         }
 
         try {
-            // فلترة حسب الحالة
+            // Filter by status
             $query = Payments::with(['payer', 'payable']);
 
             if ($request->has('status')) {
                 $query->where('status', $request->status);
             }
 
-            // فلترة حسب نوع المورد
+            // Filter by resource type
             if ($request->has('payable_type')) {
                 $modelMap = [
                     'tour_bookings' => 'App\\Models\\Tour_bookings',
@@ -63,17 +63,17 @@ class PaymentController extends Controller
                 }
             }
 
-            // فلترة حسب المستخدم
+            // Filter by user
             if ($request->has('user_id')) {
                 $query->where('payer_id', $request->user_id);
             }
 
-            // فلترة حسب التاريخ
+            // Filter by date
             if ($request->has('from_date') && $request->has('to_date')) {
                 $query->betweenDates($request->from_date, $request->to_date);
             }
 
-            // ترتيب النتائج
+            // Sort results
             $query->latest();
 
             // Pagination
@@ -102,7 +102,7 @@ class PaymentController extends Controller
 
     /**
      * GET /api/v1/payments/my-payments
-     * عرض دفعات المستخدم الحالي
+     * Display current user payments
      */
     public function myPayments(Request $request): JsonResponse
     {
@@ -117,7 +117,7 @@ class PaymentController extends Controller
         try {
             $userId = auth('sanctum')->id();
 
-            // فلترة حسب الحالة
+            // Filter by status
             $query = Payments::with(['payable'])
                 ->where('payer_id', $userId);
 
@@ -125,7 +125,7 @@ class PaymentController extends Controller
                 $query->where('status', $request->status);
             }
 
-            // ترتيب النتائج
+            // Sort results
             $query->latest();
 
             // Pagination
@@ -153,7 +153,7 @@ class PaymentController extends Controller
 
     /**
      * GET /api/v1/payments/{id}
-     * عرض دفعة واحدة
+     * Display one payment
      */
     public function show($id): JsonResponse
     {
@@ -168,7 +168,7 @@ class PaymentController extends Controller
                 ], 404);
             }
 
-            // التحقق من الصلاحية
+            // Check authorization
             $user = auth('sanctum')->user();
             if (!$user) {
                 return response()->json([
@@ -200,16 +200,16 @@ class PaymentController extends Controller
 
     /**
      * POST /api/v1/payments
-     * إنشاء دفعة جديدة (الخطوة 2 في السيناريو)
+     * Create a new payment (Step 2 in scenario)
      *
-     * يتم إنشاء الدفعة بعد إنشاء الحجز
+     * Payment is created after booking creation
      */
     public function store(StorePaymentRequest $request): JsonResponse
     {
         try {
             $validated = $request->validated();
 
-            // تحويل payable_type إلى Model Class
+            // Convert payable_type to Model Class
             $modelMap = [
                 'tour_bookings' => 'App\\Models\\Tour_bookings',
                 'plans' => 'App\\Models\\Plans',
@@ -217,7 +217,7 @@ class PaymentController extends Controller
 
             $payableType = $modelMap[$validated['payable_type']];
 
-            // إذا كان الدفع لحجز رحلة، نتحقق من حالة الحجز
+            // If payment is for tour booking, check booking status
             if ($payableType === 'App\\Models\\Tour_bookings') {
                 $booking = \App\Models\Tour_bookings::find($validated['payable_id']);
 
@@ -229,7 +229,7 @@ class PaymentController extends Controller
                     ], 404);
                 }
 
-                // التحقق من أن الحجز يخص المستخدم الحالي
+                // Check that booking belongs to current user
                 if ($booking->tourist_id !== auth('sanctum')->id()) {
                     return response()->json([
                         'success' => false,
@@ -238,7 +238,7 @@ class PaymentController extends Controller
                     ], 403);
                 }
 
-                // التحقق من إمكانية إنشاء دفعة
+                // Check if can create payment
                 if (!$booking->canCreatePayment()) {
                     return response()->json([
                         'success' => false,
@@ -247,7 +247,7 @@ class PaymentController extends Controller
                     ], 400);
                 }
 
-                // التأكد من أن المبلغ مطابق لمبلغ الحجز
+                // Ensure amount matches booking amount
                 if ($validated['amount'] != $booking->amount) {
                     return response()->json([
                         'success' => false,
@@ -258,28 +258,28 @@ class PaymentController extends Controller
                 }
             }
 
-            // --- التعديلات المطلوبة (رفع الصورة) ---
+            // --- Required modifications (upload image) ---
             $receiptPath = null;
             if ($request->hasFile('receipt_image')) {
                 $receiptPath = $request->file('receipt_image')->store('payments/receipts', 'public');
             }
 
-            // --- إضافة الحقول الجديدة للدالة ---
+            // --- Add new fields to function ---
             $payment = Payments::createPayment(
                 payerId: auth('sanctum')->id(),
                 amount: $validated['amount'],
                 payableType: $payableType,
                 payableId: $validated['payable_id'],
                 status: 'pending',
-                receiptImage: $receiptPath, // الحقل الجديد
-                transactionId: $validated['transaction_id'] ?? null, // الحقل الجديد
-                paymentMethod: $validated['payment_method'] ?? null, // الحقل الجديد
-                notes: $validated['notes'] ?? null // الحقل الجديد
+                receiptImage: $receiptPath, // New field
+                transactionId: $validated['transaction_id'] ?? null, // New field
+                paymentMethod: $validated['payment_method'] ?? null, // New field
+                notes: $validated['notes'] ?? null // New field
             );
 
             User_activities::create([
                     'user_id'       => auth('sanctum')->id(),
-                    'activity_type' => 'plan_creation', // الأقرب لعملية إنشاء معاملة
+                    'activity_type' => 'plan_creation', // Closest to transaction creation action
                     'place_id'      => null,
                     'details'       => [
                         'action'         => 'payment_submitted',
@@ -313,19 +313,19 @@ class PaymentController extends Controller
 
     /**
      * PUT /api/v1/payments/{id}
-     * تحديث الدفعة
-     * - المستخدم العادي: يمكنه تحديث المبلغ فقط للدفعات المعلقة
-     * - Admin: يمكنه تحديث المبلغ والحالة
+     * Update payment
+     * - Regular user: can only update amount for pending payments
+     * - Admin: can update amount and status
      */
     public function update(UpdatePaymentRequest $request, $id): JsonResponse
     {
         // dd($request->all());
-        // البحث عن الدفعة يدوياً
+        // Search for payment manually
         $payment = Payments::find($id);
 
         // dd($request);
 
-        // التحقق من وجودها قبل البدء في أي منطق
+        // Check if it exists before starting any logic
         if (!$payment) {
             return response()->json([
                 'success' => false,
@@ -335,19 +335,19 @@ class PaymentController extends Controller
         try {
             $validated = $request->validated();
 
-            // --- التعديل الخاص بالصورة ---
+            // --- Image modification ---
             if ($request->hasFile('receipt_image')) {
-                // 1. مسح الصورة القديمة من السيرفر إذا كانت موجودة
+                // 1. Delete old image from server if exists
                 if ($payment->receipt_image) {
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($payment->receipt_image);
                 }
 
-                // 2. تخزين الصورة الجديدة
+                // 2. Store new image
                 $path = $request->file('receipt_image')->store('payments/receipts', 'public');
                 $validated['receipt_image'] = $path;
             }
 
-            // تحديث البيانات في الداتابيز (بما فيها الحقول الجديدة transaction_id, notes, etc)
+            // Update data in database (including new fields transaction_id, notes, etc)
 
             $payment->update($validated);
 
@@ -366,9 +366,9 @@ class PaymentController extends Controller
 
     /**
      * DELETE /api/v1/payments/{id}
-     * حذف الدفعة
-     * - المستخدم: يمكنه حذف دفعاته المعلقة فقط
-     * - Admin: يمكنه حذف أي دفعة
+     * Delete payment
+     * - User: can only delete their pending payments
+     * - Admin: can delete any payment
      */
     public function destroy($id): JsonResponse
     {
@@ -385,7 +385,7 @@ class PaymentController extends Controller
 
             $user = auth('sanctum')->user();
 
-            // التحقق من الصلاحية
+            // Check authorization
             if (
                 $user->role !== 'admin' &&
                 ($payment->payer_id !== $user->id || $payment->status !== 'pending' || $payment->status !== 'rejected')
@@ -396,15 +396,15 @@ class PaymentController extends Controller
                     'error' => 'unauthorized',
                 ], 403);
             }
-            // --- التعديل المطلوب لفتح الحجز مرة أخرى ---
-            $payable = $payment->payable; // العلاقة Polymorphic
+            // --- Required modification to reopen booking ---
+            $payable = $payment->payable; // Polymorphic relationship
 
             if ($payable instanceof \App\Models\Tour_bookings) {
-                // نعيد حالة الحجز إلى pending عشان ميثود canCreatePayment ترجع true
+                // Return booking status to pending so canCreatePayment method returns true
                 $payable->update(['status' => 'pending']);
             }
 
-            // --- التعديل المطلوب: مسح الصورة من السيرفر قبل حذف السجل ---
+            // --- Required modification: delete image from server before deleting record ---
             if ($payment->receipt_image) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($payment->receipt_image);
             }
@@ -425,9 +425,9 @@ class PaymentController extends Controller
 
     /**
      * POST /api/v1/payments/{id}/approve
-     * الموافقة على الدفعة (Admin فقط) - الخطوة 3 في السيناريو
+     * Approve payment (Admin only) - Step 3 in scenario
      *
-     * عند الموافقة على الدفع، يتم تلقائياً تحديث حالة الحجز إلى approved
+     * When approving payment, booking status is automatically updated to approved
      */
     public function approve($id): JsonResponse
     {
@@ -458,14 +458,14 @@ class PaymentController extends Controller
                 ], 400);
             }
 
-            // الموافقة على الدفع
+            // Approve payment
             $payment->approve();
 
-            // إذا كان الدفع لحجز رحلة، نوافق على الحجز تلقائياً
+            // If payment is for tour booking, automatically approve booking
             if ($payment->payable_type === 'App\\Models\\Tour_bookings' && $payment->payable) {
                 $booking = $payment->payable;
 
-                // تحديث حالة الحجز إلى approved
+                // Update booking status to approved
                 if ($booking->isPending()) {
                     $booking->approve();
                 }
@@ -487,7 +487,7 @@ class PaymentController extends Controller
 
     /**
      * POST /api/v1/payments/{id}/reject
-     * رفض الدفعة (Admin فقط)
+     * Reject payment (Admin only)
      */
     public function reject($id): JsonResponse
     {
@@ -535,7 +535,7 @@ class PaymentController extends Controller
 
     /**
      * GET /api/v1/payments/statistics
-     * إحصائيات الدفعات (Admin فقط)
+     * Payment statistics (Admin only)
      */
     public function statistics(): JsonResponse
     {
@@ -598,7 +598,7 @@ class PaymentController extends Controller
 
     /**
      * GET /api/v1/users/{userId}/payments
-     * عرض دفعات مستخدم معين (Admin فقط)
+     * Display payments for a specific user (Admin only)
      */
     public function userPayments($userId): JsonResponse
     {
@@ -649,7 +649,7 @@ class PaymentController extends Controller
 
     /**
      * POST /api/v1/payments/bulk-approve
-     * الموافقة على عدة دفعات دفعة واحدة (Admin فقط)
+     * Approve multiple payments at once (Admin only)
      */
     public function bulkApprove(Request $request): JsonResponse
     {

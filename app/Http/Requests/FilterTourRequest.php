@@ -5,14 +5,14 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * FilterTourRequest - فلترة الجولات
+ * FilterTourRequest - Filter tours
  *
  * ✅ Query parameters validation
  */
 class FilterTourRequest extends FormRequest
 {
     /**
-     * الجميع يقدرون يفلتروا
+     * Everyone can filter
      */
     public function authorize(): bool
     {
@@ -20,7 +20,7 @@ class FilterTourRequest extends FormRequest
     }
 
     /**
-     * الـ Validation Rules
+     * Validation Rules
      */
     public function rules(): array
     {
@@ -30,21 +30,24 @@ class FilterTourRequest extends FormRequest
             'guide_id' => 'nullable|integer|exists:users,id',
             'start_date' => 'nullable|date',
             'sort' => 'nullable|string|in:price_asc,price_desc,newest,popular',
+            'plan_id'    => 'nullable|integer|exists:plans,id',
             'per_page' => 'nullable|integer|min:1|max:100',
         ];
     }
 
     /**
-     * الرسائل المخصصة
+     * Custom messages
      */
     public function messages(): array
     {
         return [
-            'min_price.numeric' => 'الحد الأدنى للسعر يجب أن يكون رقم',
-            'max_price.numeric' => 'الحد الأقصى للسعر يجب أن يكون رقم',
-            'guide_id.exists' => 'الدليل غير موجود',
-            'sort.in' => 'طريقة الترتيب غير صحيحة',
-            'per_page.integer' => 'عدد النتائج يجب أن يكون رقم',
+            'min_price.numeric' => 'Minimum price must be a number',
+            'max_price.numeric' => 'Maximum price must be a number',
+            'guide_id.exists' => 'Guide does not exist',
+            'sort.in' => 'Sorting method is invalid',
+            'per_page.integer' => 'Number of results must be a number',
+            'plan_id.integer'    => 'Plan ID must be a number',
+            'plan_id.exists'     => 'The requested plan does not exist',
         ];
     }
 }

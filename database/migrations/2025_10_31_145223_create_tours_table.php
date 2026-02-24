@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->time('start_time');
             $table->string('payment_method')->nullable();
+            // $table->foreignId('plan_id')->nullable()->constrained('plans')->onDelete('set null');
             $table->text('details')->nullable();
             $table->timestamps();
         });

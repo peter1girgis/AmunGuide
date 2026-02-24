@@ -20,12 +20,12 @@ class UpdatePaymentRequest extends FormRequest
             return false;
         }
 
-        // Admin يمكنه تحديث أي دفعة
+        // Admin can update any payment
         if ($user->role === 'admin') {
             return true;
         }
 
-        // المستخدم العادي يمكنه تحديث دفعاته فقط إذا كانت pending
+        // Regular user can only update their own payments if they are pending
         return $payment->payer_id === $user->id  ;
     }
 
@@ -36,7 +36,7 @@ class UpdatePaymentRequest extends FormRequest
     {
         $user = auth('sanctum')->user();
 
-        // Admin يمكنه تحديث الحالة
+        // Admin can update status
         if ($user && $user->role === 'admin') {
             return [
                 'status' => [
@@ -55,7 +55,7 @@ class UpdatePaymentRequest extends FormRequest
             ];
         }
 
-        // المستخدم العادي يمكنه تحديث المبلغ فقط
+        // Regular user can only update amount
         return [
             'receipt_image' => [
                 'sometimes',
@@ -113,10 +113,10 @@ class UpdatePaymentRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $paymentId = $this->route('payment');
-            // تأكد من البحث عن الموديل هنا أيضاً
+            // Make sure to search for the model here as well
             $payment = \App\Models\Payments::find($paymentId);
 
-            // لا يمكن تحديث دفعة معتمدة أو فاشلة (إلا من Admin)
+            // Cannot update an approved or failed payment (except for Admin)
             if (
                 $payment &&
                 $payment->status !== 'pending' &&

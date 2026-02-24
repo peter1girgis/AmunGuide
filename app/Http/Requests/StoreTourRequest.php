@@ -6,25 +6,25 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * StoreTourRequest - إنشاء جولة جديدة
+ * StoreTourRequest - Create new tour
  *
- * ✅ Validation محترف
- * ✅ رسائل خطأ بـ العربية
+ * ✅ Professional validation
+ * ✅ Error messages in English
  * ✅ Authorization checks
  */
 class StoreTourRequest extends FormRequest
 {
     /**
-     * التحقق من الصلاحيات
+     * Check authorization
      */
     public function authorize(): bool
     {
-        // فقط الـ guide يقدر ينشئ جولات
+        // Only guides can create tours
         return auth('sanctum')->check() && auth('sanctum')->user()->role === 'guide';
     }
 
     /**
-     * الـ Validation Rules
+     * Validation Rules
      */
     public function rules(): array
     {
@@ -35,92 +35,49 @@ class StoreTourRequest extends FormRequest
             'start_time' => 'required|date_format:H:i',
             'payment_method' => 'nullable|string|in:cash,card,both',
             'details' => 'nullable|string|max:2000',
+            'plan_id' => 'nullable|integer|exists:plans,id',
             'places' => 'nullable|array|max:20',
             'places.*' => 'integer|exists:places,id',
         ];
     }
 
     /**
-     * الرسائل المخصصة
+     * Custom messages
      */
     public function messages(): array
     {
         return [
-            'title.required' => 'عنوان الجولة مطلوب',
-            'title.unique' => 'عنوان الجولة موجود بالفعل',
-            'price.required' => 'السعر مطلوب',
-            'price.numeric' => 'السعر يجب أن يكون رقم',
-            'price.min' => 'السعر يجب أن يكون موجب',
-            'start_date.required' => 'تاريخ البداية مطلوب',
-            'start_date.after' => 'تاريخ البداية يجب أن يكون في المستقبل',
-            'start_time.required' => 'وقت البداية مطلوب',
-            'start_time.date_format' => 'صيغة الوقت غير صحيحة (HH:mm)',
-            'payment_method.in' => 'طريقة الدفع غير صحيحة',
-            'places.array' => 'الأماكن يجب أن تكون قائمة',
-            'places.*.exists' => 'الموقع غير موجود',
+            'title.required' => 'Tour title is required',
+            'title.unique' => 'Tour title already exists',
+            'price.required' => 'Price is required',
+            'price.numeric' => 'Price must be a number',
+            'price.min' => 'Price must be positive',
+            'start_date.required' => 'Start date is required',
+            'start_date.after' => 'Start date must be in the future',
+            'start_time.required' => 'Start time is required',
+            'plan_id.integer' => 'Plan ID must be a whole number',
+            'plan_id.exists' => 'The selected plan does not exist',
+            'start_time.date_format' => 'Time format is invalid (HH:mm)',
+            'payment_method.in' => 'Payment method is invalid',
+            'places.array' => 'Places must be a list',
+            'places.*.exists' => 'The location does not exist',
         ];
     }
 
     /**
-     * الـ Attributes المترجمة
+     * Translated attributes
      */
     public function attributes(): array
     {
         return [
-            'title' => 'عنوان الجولة',
-            'price' => 'السعر',
-            'start_date' => 'تاريخ البداية',
-            'start_time' => 'وقت البداية',
-            'payment_method' => 'طريقة الدفع',
-            'details' => 'التفاصيل',
-            'places' => 'الأماكن',
-        ];
-    }
-}
-
-
-
-/**
- * FilterTourRequest - فلترة الجولات
- *
- * ✅ Query parameters validation
- */
-class FilterTourRequest extends FormRequest
-{
-    /**
-     * الجميع يقدرون يفلتروا
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    /**
-     * الـ Validation Rules
-     */
-    public function rules(): array
-    {
-        return [
-            'min_price' => 'nullable|numeric|min:0',
-            'max_price' => 'nullable|numeric|min:0',
-            'guide_id' => 'nullable|integer|exists:users,id',
-            'start_date' => 'nullable|date',
-            'sort' => 'nullable|string|in:price_asc,price_desc,newest,popular',
-            'per_page' => 'nullable|integer|min:1|max:100',
-        ];
-    }
-
-    /**
-     * الرسائل المخصصة
-     */
-    public function messages(): array
-    {
-        return [
-            'min_price.numeric' => 'الحد الأدنى للسعر يجب أن يكون رقم',
-            'max_price.numeric' => 'الحد الأقصى للسعر يجب أن يكون رقم',
-            'guide_id.exists' => 'الدليل غير موجود',
-            'sort.in' => 'طريقة الترتيب غير صحيحة',
-            'per_page.integer' => 'عدد النتائج يجب أن يكون رقم',
+            'title' => 'tour title',
+            'price' => 'price',
+            'start_date' => 'start date',
+            'start_time' => 'start time',
+            'payment_method' => 'payment method',
+            'details' => 'details',
+            'plan_id' => 'selected plan',
+            'places' => 'locations',
         ];
     }
 }

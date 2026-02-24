@@ -19,7 +19,7 @@ class StorePlaceRequest extends FormRequest
 
             'ticket_price' => 'required|numeric|min:0|max:10000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            
+
             'rating' => 'nullable|numeric|min:0|max:5',
         ];
     }
@@ -27,12 +27,12 @@ class StorePlaceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.required' => 'العنوان مطلوب.',
-            'title.unique' => 'هذا العنوان موجود بالفعل.',
-            'description.required' => 'الوصف مطلوب.',
-            'description.min' => 'الوصف يجب أن يكون 10 أحرف على الأقل.',
+            'title.required' => 'Title is required.',
+            'title.unique' => 'This title already exists.',
+            'description.required' => 'Description is required.',
+            'description.min' => 'Description must be at least 10 characters.',
 
-            'ticket_price.required' => 'سعر التذكرة مطلوب.',
+            'ticket_price.required' => 'Ticket price is required.',
 
         ];
     }

@@ -13,16 +13,16 @@ use Illuminate\Http\JsonResponse;
 /**
  * PlaceController - Optional Authentication
  *
- * ✅ جميع الـ GET endpoints متاحة للـ guest
- * ✅ لكن لو user مسجل → تسجيل النشاط
+ * ✅ All GET endpoints available for guests
+ * ✅ But if user is logged in → track activity
  */
 class PlaceController extends Controller
 {
     /**
      * GET /api/v1/places
      *
-     * ✅ متاح للـ guest والـ authenticated users
-     * ✅ لو authenticated → track activity
+     * ✅ Available for guests and authenticated users
+     * ✅ If authenticated → track activity
      */
     public function index(Request $request): JsonResponse
     {
@@ -66,13 +66,13 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/{id}
      *
-     * ✅ متاح للـ guest والـ authenticated users
-     * ✅ لو authenticated → track visit activity
+     * ✅ Available for guests and authenticated users
+     * ✅ If authenticated → track visit activity
      */
     public function show(Places $place, Request $request): JsonResponse
     {
         try {
-            // ✅ Track user activity ONLY إذا كان مسجل دخول
+            // ✅ Track user activity ONLY if logged in
             if (auth('sanctum')->check()) {
                 User_activities::create([
                     'user_id' => auth('sanctum')->id(),
@@ -103,8 +103,8 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/search
      *
-     * ✅ متاح للـ guest والـ authenticated users
-     * ✅ لو authenticated → track search activity
+     * ✅ Available for guests and authenticated users
+     * ✅ If authenticated → track search activity
      *
      * Query Parameters:
      * - q: search query (min 3 chars)
@@ -121,30 +121,30 @@ class PlaceController extends Controller
                 ], 400);
             }
 
-            // 1. 💡 تركة: تنفيذ الـ Query أولاً قبل تسجيل النشاط
-            // لكي نعرف ما هي "الكلمة الكاملة" التي وجدها النظام
+            // 1. 💡 Note: Execute the query first before logging activity
+            // So we know what "complete word" the system found
             $places = Places::query()
                 ->where('title', 'like', "%{$query}%")
                 ->orWhere('description', 'like', "%{$query}%")
                 ->latest('created_at')
                 ->paginate($request->get('per_page', 15));
 
-            // 2. 💡 تركة: التحقق من وجود نتائج + تسجيل النشاط الذكي
-            // لو المستخدم كتب "Pyra" وظهرت نتائج، أول نتيجة غالباً هي الأقرب (مثل Pyramids)
+            // 2. 💡 Note: Check if results exist + intelligent activity logging
+            // If user typed "Pyra" and results appeared, first result is usually closest (like Pyramids)
             if ($places->isNotEmpty() && auth('sanctum')->check()) {
 
-                // نأخذ عنوان أول نتيجة كـ "كلمة مستهدفة كاملة"
+                // Take title of first result as "complete target word"
                 $fullMatchedTerm = $places->first()->title;
 
                 User_activities::create([
                     'user_id' => auth('sanctum')->id(),
                     'activity_type' => 'search',
 
-                    // 💡 تركة: خزن الكلمة الكاملة في الحقل الأساسي للتحليل السريع
+                    // 💡 Note: Store complete word in main field for fast analysis
                     'search_query' => $fullMatchedTerm,
 
                     'details' => [
-                        // خزن ما كتبه المستخدم فعلياً للمقارنة مستقبلاً
+                        // Store what user actually typed for future comparison
                         'user_typed_this' => $query,
                         'actual_match' => $fullMatchedTerm,
                         'results_count' => $places->total(),
@@ -161,13 +161,13 @@ class PlaceController extends Controller
                     'total' => $places->total(),
                     'per_page' => $places->perPage(),
                     'current_page' => $places->currentPage(),
-                    'last_page' => $places->lastPage(), // 💡 تركة: أضف الـ last_page لتسهيل عمل الـ Frontend
+                    'last_page' => $places->lastPage(), // 💡 Note: Add last_page to make frontend work easier
                     'has_more' => $places->hasMorePages(),
                 ]
             ]);
 
         } catch (\Throwable $e) {
-            // 💡 تركة: دائماً سجل الخطأ مع الـ Stack Trace في الـ Log للمطورين
+            // 💡 Note: Always log error with stack trace in log for developers
             \Log::error('Search failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return response()->json([
@@ -180,7 +180,7 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/trending
      *
-     * ✅ متاح للـ guest والـ authenticated users
+     * ✅ Available for guests and authenticated users
      */
     public function trending(): JsonResponse
     {
@@ -207,8 +207,8 @@ class PlaceController extends Controller
     /**
      * GET /api/v1/places/filter
      *
-     * ✅ متاح للـ guest والـ authenticated users
-     * ✅ لو authenticated → track filter activity
+     * ✅ Available for guests and authenticated users
+     * ✅ If authenticated → track filter activity
      *
      * Query Parameters:
      * - min_price: 0
@@ -218,18 +218,18 @@ class PlaceController extends Controller
     public function filter(Request $request): JsonResponse
     {
         try {
-            // ✅ جمع معايير الـ Filter
+            // ✅ Gather filter criteria
             $filterCriteria = [
                 'min_price' => $request->get('min_price'),
                 'max_price' => $request->get('max_price'),
                 'sort' => $request->get('sort'),
             ];
 
-            // ✅ Track filter activity ONLY إذا كان مسجل دخول
+            // ✅ Track filter activity ONLY if logged in
             if (auth('sanctum')->check()) {
                 User_activities::create([
                     'user_id' => auth('sanctum')->id(),
-                    'activity_type' => 'search', // نستخدم search للفلتر أيضاً
+                    'activity_type' => 'search', // Use search for filter too
                     'details' => ([
                         'filter_type' => 'places_filter',
                         'criteria' => array_filter($filterCriteria),
@@ -285,14 +285,14 @@ class PlaceController extends Controller
     /**
      * POST /api/v1/places
      *
-     * ✅ Admin only (محمي بـ middleware)
+     * ✅ Admin only (protected by middleware)
      */
     public function store(Request $request): JsonResponse
     {
         if(!auth('sanctum')->user() || auth('sanctum')->user()->role !== 'admin'){
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized | Only Admin can access .',
+                'message' => 'Unauthorized | Only Admin can access.',
             ], 403);
         }
         try {
@@ -342,7 +342,7 @@ class PlaceController extends Controller
     /**
      * PUT /api/v1/places/{id}
      *
-     * ✅ Admin only (محمي بـ middleware)
+     * ✅ Admin only (protected by middleware)
      */
     public function update(Request $request, Places $place): JsonResponse
     {
@@ -395,7 +395,7 @@ class PlaceController extends Controller
     /**
      * DELETE /api/v1/places/{id}
      *
-     * ✅ Admin only (محمي بـ middleware)
+     * ✅ Admin only (protected by middleware)
      */
     public function destroy(Places $place): JsonResponse
     {

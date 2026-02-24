@@ -18,17 +18,17 @@ class UpdateTourBookingRequest extends FormRequest
             return false;
         }
 
-        // Admin يمكنه تحديث أي حجز
+        // Admin can update any booking
         if ($user->role === 'admin') {
             return true;
         }
 
-        // المرشد يمكنه تحديث حجوزات رحلاته فقط (تغيير الحالة)
+        // Guide can update bookings for their tours only (change status)
         if ($user->role === 'guide' && $booking->tour->guide_id === $user->id) {
             return true;
         }
 
-        // السائح يمكنه تحديث حجزه فقط إذا كان pending (تغيير عدد المشاركين)
+        // Tourist can only update their booking if it is pending (change participant count)
         return $booking->tourist_id === $user->id && $booking->status === 'pending';
     }
 
@@ -40,7 +40,7 @@ class UpdateTourBookingRequest extends FormRequest
         $user = auth('sanctum')->user();
         $booking = $this->route('booking');
 
-        // Admin والمرشد يمكنهما تحديث الحالة
+        // Admin and guide can update status
         if ($user && in_array($user->role, ['admin', 'guide'])) {
             return [
                 'status' => [
@@ -59,7 +59,7 @@ class UpdateTourBookingRequest extends FormRequest
             ];
         }
 
-        // السائح يمكنه تحديث عدد المشاركين فقط
+        // Tourist can only update participant count
         return [
             'participants_count' => [
                 'sometimes',
@@ -104,7 +104,7 @@ class UpdateTourBookingRequest extends FormRequest
 
 
 
-            // لا يمكن تحديث حجز مرفوض
+            // Cannot update a rejected booking
             if ($booking && $booking->isRejected() && $user->role !== 'admin') {
                 $validator->errors()->add(
                     'status',
@@ -112,7 +112,7 @@ class UpdateTourBookingRequest extends FormRequest
                 );
             }
 
-            // لا يمكن تحديث حجز معتمد له دفعة معتمدة
+            // Cannot update an approved booking with an approved payment
             if ($booking &&
                 $booking->isApproved() &&
                 $booking->hasApprovedPayment() &&
@@ -124,7 +124,7 @@ class UpdateTourBookingRequest extends FormRequest
                 );
             }
 
-            // إذا تم تحديث عدد المشاركين، نحتاج إلى إعادة حساب المبلغ
+            // If participant count is updated, we need to recalculate the amount
             if ($this->has('participants_count') && $booking) {
                 $newAmount = $booking->tour->price * $this->input('participants_count');
                 $this->merge(['amount' => $newAmount]);
@@ -138,12 +138,12 @@ class UpdateTourBookingRequest extends FormRequest
     protected function prepareForValidation()
     {
         $booking = $this->route('booking');
-        // 1. لو المستخدم بعت amount يدوي، بنشيلها فوراً عشان نضمن إننا اللي هنحسبها
+        // 1. If user sent amount manually, remove it immediately to ensure we calculate it
         if ($this->has('amount')) {
             $this->offsetUnset('amount');
         }
 
-        // إذا تم تحديث عدد المشاركين، نحسب المبلغ الجديد
+        // If participant count is updated, calculate the new amount
         if ($this->has('participants_count') && $booking) {
             $newAmount = $booking->tour->price * $this->input('participants_count');
             $this->merge(['amount' => $newAmount]);

@@ -6,15 +6,15 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * UpdateTourRequest - تحديث جولة
+ * UpdateTourRequest - Update tour
  *
- * ✅ معظم الحقول اختيارية
- * ✅ نفس الـ Validation لكن أخف
+ * ✅ Most fields are optional
+ * ✅ Same validation but lighter
  */
 class UpdateTourRequest extends FormRequest
 {
     /**
-     * التحقق من الصلاحيات
+     * Check authorization
      */
     public function authorize(): bool
     {
@@ -27,7 +27,7 @@ class UpdateTourRequest extends FormRequest
     }
 
     /**
-     * الـ Validation Rules
+     * Validation Rules
      */
     public function rules(): array
     {
@@ -45,39 +45,43 @@ class UpdateTourRequest extends FormRequest
             'start_time' => 'sometimes|date_format:H:i',
             'payment_method' => 'nullable|string|in:cash,card,both',
             'details' => 'nullable|string|max:2000',
+            'plan_id' => 'sometimes|nullable|integer|exists:plans,id',
             'places' => 'nullable|array|max:20',
             'places.*' => 'integer|exists:places,id',
         ];
     }
 
     /**
-     * الرسائل المخصصة
+     * Custom messages
      */
     public function messages(): array
     {
         return [
-            'title.unique' => 'عنوان الجولة موجود بالفعل',
-            'title.string' => 'عنوان الجولة يجب أن يكون نص',
-            'price.numeric' => 'السعر يجب أن يكون رقم',
-            'start_time.date_format' => 'صيغة الوقت غير صحيحة (HH:mm)',
-            'payment_method.in' => 'طريقة الدفع غير صحيحة',
-            'places.array' => 'الأماكن يجب أن تكون قائمة',
+            'title.unique' => 'Tour title already exists',
+            'title.string' => 'Tour title must be text',
+            'price.numeric' => 'Price must be a number',
+            'start_time.date_format' => 'Time format is invalid (HH:mm)',
+            'plan_id.exists' => 'The selected plan does not exist in our records.',
+            'plan_id.integer' => 'Plan ID must be a whole number.',
+            'payment_method.in' => 'Payment method is invalid',
+            'places.array' => 'Places must be a list',
         ];
     }
 
     /**
-     * الـ Attributes المترجمة
+     * Translated attributes
      */
     public function attributes(): array
     {
         return [
-            'title' => 'عنوان الجولة',
-            'price' => 'السعر',
-            'start_date' => 'تاريخ البداية',
-            'start_time' => 'وقت البداية',
-            'payment_method' => 'طريقة الدفع',
-            'details' => 'التفاصيل',
-            'places' => 'الأماكن',
+            'title' => 'tour title',
+            'price' => 'price',
+            'start_date' => 'start date',
+            'start_time' => 'start time',
+            'payment_method' => 'payment method',
+            'details' => 'details',
+            'plan_id' => 'plan',
+            'places' => 'locations',
         ];
     }
 }

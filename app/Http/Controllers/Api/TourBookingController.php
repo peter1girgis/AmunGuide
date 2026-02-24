@@ -14,30 +14,30 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * TourBookingController - إدارة حجوزات الرحلات
+ * TourBookingController - Tour Bookings Management
  *
- * السيناريو:
- * 1. السائح يحجز الرحلة → إنشاء booking بحالة pending
- * 2. السائح يدفع → إنشاء payment مربوط بالـ booking
- * 3. Admin يوافق على الدفع → تحديث حالة الـ booking إلى approved
+ * Scenario:
+ * 1. Tourist books the tour → create booking with pending status
+ * 2. Tourist pays → create payment linked to the booking
+ * 3. Admin approves payment → update booking status to approved
  *
- * ✅ إنشاء حجز جديد
- * ✅ عرض جميع الحجوزات (حسب الصلاحية)
- * ✅ عرض حجوزاتي
- * ✅ عرض حجز واحد
- * ✅ تحديث الحجز
- * ✅ إلغاء/حذف الحجز
- * ✅ الموافقة/الرفض (للمرشد والـ Admin)
- * ✅ إحصائيات الحجوزات
+ * ✅ Create a new booking
+ * ✅ Display all bookings (by authorization)
+ * ✅ Display my bookings
+ * ✅ Display one booking
+ * ✅ Update booking
+ * ✅ Cancel/delete booking
+ * ✅ Approve/reject (for guide and admin)
+ * ✅ Booking statistics
  */
 class TourBookingController extends Controller
 {
     /**
      * GET /api/v1/tour-bookings
-     * عرض جميع الحجوزات (حسب الصلاحية)
-     * - Admin: يرى جميع الحجوزات
-     * - Guide: يرى حجوزات رحلاته فقط
-     * - Tourist: يتم تحويله لـ /my-bookings
+     * Display all bookings (by authorization)
+     * - Admin: sees all bookings
+     * - Guide: sees bookings for their tours only
+     * - Tourist: redirected to /my-bookings
      */
     public function index(Request $request): JsonResponse
     {
@@ -53,33 +53,33 @@ class TourBookingController extends Controller
             $user = auth('sanctum')->user();
             $query = Tour_bookings::with(['tour.guide', 'tourist', 'payments']);
 
-            // حسب دور المستخدم
+            // Based on user role
             if ($user->role === 'admin') {
-                // Admin يرى كل شيء
+                // Admin sees everything
             } elseif ($user->role === 'guide') {
-                // المرشد يرى حجوزات رحلاته فقط
+                // Guide sees bookings for their tours only
                 $query->forGuide($user->id);
             } else {
-                // السائح يتم تحويله لحجوزاته فقط
+                // Tourist redirected to their bookings only
                 return $this->myBookings($request);
             }
 
-            // فلترة حسب الحالة
+            // Filter by status
             if ($request->has('status')) {
                 $query->where('status', $request->status);
             }
 
-            // فلترة حسب الرحلة
+            // Filter by tour
             if ($request->has('tour_id')) {
                 $query->where('tour_id', $request->tour_id);
             }
 
-            // فلترة حسب السائح
+            // Filter by tourist
             if ($request->has('tourist_id') && $user->role === 'admin') {
                 $query->where('tourist_id', $request->tourist_id);
             }
 
-            // ترتيب النتائج
+            // Sort results
             $query->latest();
 
             // Pagination
@@ -108,7 +108,7 @@ class TourBookingController extends Controller
 
     /**
      * GET /api/v1/tour-bookings/my-bookings
-     * عرض حجوزات المستخدم الحالي
+     * Display current user bookings
      */
     public function myBookings(Request $request): JsonResponse
     {
@@ -126,12 +126,12 @@ class TourBookingController extends Controller
             $query = Tour_bookings::with(['tour.guide', 'payments'])
                 ->where('tourist_id', $userId);
 
-            // فلترة حسب الحالة
+            // Filter by status
             if ($request->has('status')) {
                 $query->where('status', $request->status);
             }
 
-            // ترتيب النتائج
+            // Sort results
             $query->latest();
 
             // Pagination
@@ -158,7 +158,7 @@ class TourBookingController extends Controller
 
     /**
      * GET /api/v1/tour-bookings/{id}
-     * عرض حجز واحد
+     * Display one booking
      */
     public function show($id): JsonResponse
     {
@@ -173,7 +173,7 @@ class TourBookingController extends Controller
                 ], 404);
             }
 
-            // التحقق من الصلاحية
+            // Check authorization
             $user = auth('sanctum')->user();
             if (!$user) {
                 return response()->json([
@@ -183,7 +183,7 @@ class TourBookingController extends Controller
                 ], 401);
             }
 
-            // التحقق من الصلاحية للوصول
+            // Check authorization to access
             if ($user->role !== 'admin' &&
                 $booking->tourist_id !== $user->id &&
                 $booking->tour->guide_id !== $user->id) {
@@ -209,29 +209,29 @@ class TourBookingController extends Controller
 
     /**
      * POST /api/v1/tour-bookings
-     * إنشاء حجز جديد (الخطوة 1 في السيناريو)
+     * Create a new booking (Step 1 in scenario)
      *
-     * بعد إنشاء الحجز، يتم توجيه المستخدم لصفحة الدفع
+     * After creating booking, user is directed to payment page
      */
     public function store(StoreTourBookingRequest $request): JsonResponse
     {
         try {
             $validated = $request->validated();
 
-            // إنشاء الحجز بحالة pending
+            // Create booking with pending status
             $booking = Tour_bookings::createBooking(
                 tourId: $validated['tour_id'],
                 touristId: auth('sanctum')->id(),
                 participantsCount: $validated['participants_count']
             );
 
-            // تحميل العلاقات
+            // Load relationships
             $booking->load(['tour.guide', 'tourist']);
 
             User_activities::create([
                 'user_id'       => auth('sanctum')->id(),
-                'activity_type' => 'plan_creation', // اخترت plan_creation لأنها الأقرب للحجز في الـ Enum الحالي
-                'place_id'      => null, // اتركها null لأن الحجز لـ Tour وليس Place
+                'activity_type' => 'plan_creation', // Chose plan_creation because it's closest to booking in current Enum
+                'place_id'      => null, // Leave null because booking is for Tour not Place
                 'details'       => [
                     'action'             => 'tour_booking_created',
                     'tour_id'            => $booking->tour_id,
@@ -267,9 +267,9 @@ class TourBookingController extends Controller
 
     /**
      * PUT /api/v1/tour-bookings/{id}
-     * تحديث الحجز
-     * - السائح: يمكنه تحديث عدد المشاركين (إذا كان pending)
-     * - المرشد/Admin: يمكنهم تحديث الحالة
+     * Update booking
+     * - Tourist: can update participant count (if pending)
+     * - Guide/Admin: can update status
      */
     public function update(UpdateTourBookingRequest $request, Tour_bookings $booking): JsonResponse
     {
@@ -280,7 +280,7 @@ class TourBookingController extends Controller
             $validated = $request->validated();
 
 
-            // unset($validated['amount']); // منع تحديث المبلغ مباشرة من هنا
+            // unset($validated['amount']); // Prevent amount update directly from here
 
             // dd($validated);
             $booking->update($validated);
@@ -302,7 +302,7 @@ class TourBookingController extends Controller
 
     /**
      * DELETE /api/v1/tour-bookings/{id}
-     * إلغاء/حذف الحجز
+     * Cancel/delete booking
      */
     public function destroy($id): JsonResponse
     {
@@ -319,7 +319,7 @@ class TourBookingController extends Controller
 
             $user = auth('sanctum')->user();
 
-            // التحقق من الصلاحية
+            // Check authorization
             if ($user->role !== 'admin' &&
                 ($booking->tourist_id !== $user->id || !$booking->canBeCancelled())) {
                 return response()->json([
@@ -334,14 +334,14 @@ class TourBookingController extends Controller
                 'tour_id'       => $booking->tour_id,
                 'tour_title'    => $booking->tour->title ?? 'N/A',
                 'amount_refunded' => $booking->amount,
-                'cancelled_by'  => $user->role, // هل الأدمن هو من ألغى أم المستخدم؟
+                'cancelled_by'  => $user->role, // Was the admin who cancelled or the user?
                 'ip_address'    => request()->ip(),
             ];
 
             $booking->delete();
             User_activities::create([
                 'user_id'       => $user->id,
-                'activity_type' => 'plan_creation', // القيمة المتاحة في الـ enum
+                'activity_type' => 'plan_creation', // Available value in enum
                 'place_id'      => null,
                 'details'       => $bookingData,
             ]);
@@ -361,7 +361,7 @@ class TourBookingController extends Controller
 
     /**
      * POST /api/v1/tour-bookings/{id}/approve
-     * الموافقة على الحجز (Guide/Admin فقط)
+     * Approve booking (Guide/Admin only)
      */
     public function approve($id): JsonResponse
     {
@@ -386,7 +386,7 @@ class TourBookingController extends Controller
                 ], 404);
             }
 
-            // المرشد يمكنه الموافقة على حجوزات رحلاته فقط
+            // Guide can only approve bookings for their own tours
             if ($user->role === 'guide' && $booking->tour->guide_id !== $user->id) {
                 return response()->json([
                     'success' => false,
@@ -403,7 +403,7 @@ class TourBookingController extends Controller
                 ], 400);
             }
 
-            // التحقق من وجود دفعة معتمدة
+            // Check for approved payment
             if (!$booking->hasApprovedPayment()) {
                 return response()->json([
                     'success' => false,
@@ -430,7 +430,7 @@ class TourBookingController extends Controller
 
     /**
      * POST /api/v1/tour-bookings/{id}/reject
-     * رفض الحجز (Guide/Admin فقط)
+     * Reject booking (Guide/Admin only)
      */
     public function reject($id): JsonResponse
     {
@@ -455,7 +455,7 @@ class TourBookingController extends Controller
                 ], 404);
             }
 
-            // المرشد يمكنه رفض حجوزات رحلاته فقط
+            // Guide can only reject bookings for their own tours
             if ($user->role === 'guide' && $booking->tour->guide_id !== $user->id) {
                 return response()->json([
                     'success' => false,
@@ -490,7 +490,7 @@ class TourBookingController extends Controller
 
     /**
      * GET /api/v1/tour-bookings/statistics
-     * إحصائيات الحجوزات (حسب الصلاحية)
+     * Booking statistics (by authorization)
      */
     public function statistics(): JsonResponse
     {
@@ -506,7 +506,7 @@ class TourBookingController extends Controller
             $user = auth('sanctum')->user();
 
             if ($user->role === 'admin') {
-                // إحصائيات عامة للـ Admin
+                // General statistics for Admin
                 $allBookings = Tour_bookings::with(['tour', 'payments'])->get();
 
                 return response()->json([
@@ -526,14 +526,14 @@ class TourBookingController extends Controller
                 ]);
 
             } elseif ($user->role === 'guide') {
-                // إحصائيات المرشد
+                // Guide statistics
                 return response()->json([
                     'success' => true,
                     'data' => Tour_bookings::getGuideBookingStats($user->id),
                 ]);
 
             } else {
-                // إحصائيات السائح
+                // Tourist statistics
                 return response()->json([
                     'success' => false,
                     'message' => 'Tourists should use /my-bookings endpoint for their statistics',
@@ -551,7 +551,7 @@ class TourBookingController extends Controller
 
     /**
      * GET /api/v1/tours/{tourId}/bookings
-     * عرض حجوزات رحلة معينة
+     * Display bookings for a specific tour
      */
     public function tourBookings($tourId): JsonResponse
     {
@@ -576,7 +576,7 @@ class TourBookingController extends Controller
                 ], 404);
             }
 
-            // التحقق من الصلاحية
+            // Check authorization
             if ($user->role !== 'admin' && $tour->guide_id !== $user->id) {
                 return response()->json([
                     'success' => false,

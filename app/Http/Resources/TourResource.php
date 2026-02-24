@@ -8,8 +8,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * TourResource - Transform Tour Model to JSON
  *
- * ✅ تنسيق البيانات للـ API response
- * ✅ التحكم في البيانات المرسلة حسب الـ route
+ * ✅ Data formatting for API response
+ * ✅ Control data sent based on the route
  */
 class TourResource extends JsonResource
 {
@@ -38,6 +38,17 @@ class TourResource extends JsonResource
             'start_date' => $this->start_date->format('Y-m-d'),
             'start_date_formatted' => $this->start_date->format('F j, Y'),
             'start_time' => $this->start_time,
+
+            'plan_id' => $this->plan_id ?? null,
+            // Display plan details only if it exists and is linked to the tour
+            'plan' => $this->when($this->plan_id, function() {
+                return [
+                    'id'    => $this->plan->id,
+                    'title' => $this->plan->title,
+                    // If you want to display places associated with the plan here as well
+                    'items' => PlanItemResource::collection($this->plan->planItems),
+                ];
+            }) ,
 
             // ──────────────────────────────────────────────────
             // Guide Information

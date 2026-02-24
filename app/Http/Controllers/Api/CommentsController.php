@@ -13,18 +13,18 @@ use App\Models\User_activities;
 use Illuminate\Support\Str;
 
 /**
- * CommentsController - إدارة التعليقات
+ * CommentsController - Comments Management
  *
- * ✅ إضافة تعليق على Tour, Place, أو Plan
- * ✅ عرض التعليقات
- * ✅ تحديث التعليق
- * ✅ حذف التعليق
+ * ✅ Add comment on Tour, Place, or Plan
+ * ✅ Display comments
+ * ✅ Update comment
+ * ✅ Delete comment
  */
 class CommentsController extends Controller
 {
     /**
      * GET /api/v1/comments/{commentable_type}/{commentable_id}
-     * الحصول على جميع التعليقات لـ مورد معين
+     * Get all comments for a specific resource
      *
      * @param string $commentableType (tours, places, plans)
      * @param int $commentableId
@@ -36,17 +36,17 @@ class CommentsController extends Controller
         if (!in_array($commentableType, $validTypes)) {
             return response()->json([
                 'success' => false,
-                'message' => 'نوع المورد غير صحيح',
+                'message' => 'Resource type is invalid',
                 'error' => 'invalid_type',
             ], 400);
         }
 
         // Get all comments for this resource
         $comments = Comments::where('commentable_type', $commentableType)
-                           ->where('commentable_id', $commentableId)
-                           ->with('user')
-                           ->latest()
-                           ->paginate(15);
+            ->where('commentable_id', $commentableId)
+            ->with('user')
+            ->latest()
+            ->paginate(15);
 
         return response()->json([
             'success' => true,
@@ -64,7 +64,7 @@ class CommentsController extends Controller
 
     /**
      * GET /api/v1/comments/{id}
-     * الحصول على تعليق واحد
+     * Get a single comment
      */
     public function show($id): JsonResponse
     {
@@ -84,11 +84,11 @@ class CommentsController extends Controller
 
     /**
      * POST /api/v1/comments
-     * إضافة تعليق جديد
+     * Add a new comment
      *
-     * الـ Request يجب أن يحتوي على:
+     * The Request must contain:
      * {
-     *   "content": "محتوى التعليق",
+     *   "content": "Comment content",
      *   "commentable_type": "tours|places|plans",
      *   "commentable_id": 1
      * }
@@ -109,14 +109,14 @@ class CommentsController extends Controller
         $userId = auth('sanctum')->id();
         User_activities::create([
             'user_id'       => $userId,
-            'activity_type' => 'comment', // متوافق تماماً مع الـ Migration
+            'activity_type' => 'comment', // Fully compatible with the Migration
             'place_id'      => $placeId,
             'details'       => [
                 'action'           => 'added_comment',
                 'comment_id'       => $comment->id,
                 'commentable_type' => $validated['commentable_type'],
                 'commentable_id'   => $validated['commentable_id'],
-                'comment_preview'  => Str::limit($comment->content, 50), // تخزين بداية التعليق للذكرى
+                'comment_preview'  => Str::limit($comment->content, 50), // Store comment beginning for memory
                 'ip_address'       => $request->ip(),
             ],
         ]);
@@ -130,75 +130,66 @@ class CommentsController extends Controller
 
     /**
      * PUT /api/v1/comments/{id}
-     * تحديث تعليق
+     * Update a comment
      *
-     * يمكن فقط للـ owner أو admin التحديث
+     * Only owner or admin can update
      */
     public function update(UpdateCommentRequest $request, $id): JsonResponse
-{
-    // لاحظ أننا لم نعد بحاجة لـ Comments::find($id) لأن لارافيل قام بها بالفعل
+    {
+        // Note that we no longer need Comments::find($id) because Laravel already did it
 
-    $comment = Comments::find($id);
+        $comment = Comments::find($id);
 
-    if (!$comment) {
+        if (!$comment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Comment NOT found',
+            ], 404);
+        }
+
+        $oldContent = $comment->content;
+        $validated = $request->validated();
+        $comment->update($validated);
+
+        // Get the current user (confirmed to exist in the Request)
+        $user = auth('sanctum')->user();
+
+        // Determine if the comment is for a Place
+        $isPlace = ($comment->commentable_type === 'places' || $comment->commentable_type === 'App\Models\Places');
+        $placeId = $isPlace ? $comment->commentable_id : null;
+
+        // Log the activity
+        User_activities::create([
+            'user_id'       => $user->id,
+            'activity_type' => 'comment',
+            'place_id'      => $placeId,
+            'details'       => [
+                'action'         => 'updated_comment',
+                'comment_id'     => $comment->id,
+                'resource_type'  => $comment->commentable_type,
+                'resource_id'    => $comment->commentable_id,
+                'old_preview'    => $oldContent,
+                'new_preview'    => $comment->content,
+                'ip_address'     => $request->ip(),
+            ],
+        ]);
+
         return response()->json([
-            'success' => false,
-            'message' => 'Comment NOT found',
-        ], 404);
+            'success' => true,
+            'message' => 'Comment updated successfully',
+            'data'    => CommentResource::make($comment->load('user')),
+        ]);
     }
-
-    $oldContent = $comment->content;
-    $validated = $request->validated();
-    $comment->update($validated);
-
-    // الحصول على المستخدم الحالي (تم التأكد من وجوده في الـ Request)
-    $user = auth('sanctum')->user();
-
-    // تحديد ما إذا كان التعليق يخص مكان (Place)
-    $isPlace = ($comment->commentable_type === 'places' || $comment->commentable_type === 'App\Models\Places');
-    $placeId = $isPlace ? $comment->commentable_id : null;
-
-    // تسجيل النشاط
-    User_activities::create([
-        'user_id'       => $user->id,
-        'activity_type' => 'comment',
-        'place_id'      => $placeId,
-        'details'       => [
-            'action'         => 'updated_comment',
-            'comment_id'     => $comment->id,
-            'resource_type'  => $comment->commentable_type,
-            'resource_id'    => $comment->commentable_id,
-            'old_preview'    => $oldContent ,
-            'new_preview'    => $comment->content,
-            'ip_address'     => $request->ip(),
-        ],
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Comment updated successfully',
-        'data'    => CommentResource::make($comment->load('user')),
-    ]);
-}
 
     /**
      * DELETE /api/v1/comments/{id}
-     * حذف تعليق
+     * Delete a comment
      *
-     * يمكن فقط للـ owner أو admin الحذف
+     * Only owner or admin can delete
      */
     public function destroy($id): JsonResponse
     {
         $comment = Comments::find($id);
-        // Check authorization
-        if (auth('sanctum')->id() !== $comment?->user_id &&
-            auth('sanctum')->user()->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not authorized to delete this comment.',
-                'error' => 'unauthorized',
-            ], 403);
-        }
         if (!$comment) {
             return response()->json([
                 'success' => false,
@@ -206,6 +197,31 @@ class CommentsController extends Controller
                 'error' => 'not_found',
             ], 404);
         }
+        // Check authorization
+        if (
+            auth('sanctum')->id() !== $comment?->user_id &&
+            auth('sanctum')->user()->role !== 'admin'
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this comment.',
+                'error' => 'unauthorized',
+            ], 403);
+        }
+
+        User_activities::create([
+            'user_id'       => auth('sanctum')->id(),
+            'activity_type' => 'comment',
+            'place_id'      => $comment->commentable_type === 'places' ? $comment->commentable_id : null,
+            'details'       => [
+                'action'         => 'deleted_comment',
+                'comment_id'     => $comment->id,
+                'resource_type'  => $comment->commentable_type,
+                'resource_id'    => $comment->commentable_id,
+                'comment_preview' => $comment->content,
+                'ip_address'     => \request()->ip(),
+            ],
+        ]);
 
         $comment->delete();
 
@@ -217,22 +233,22 @@ class CommentsController extends Controller
 
     /**
      * GET /api/v1/comments/user/{userId}
-     * الحصول على جميع تعليقات مستخدم معين
+     * Get all comments for a specific user
      */
     public function userComments(int $userId): JsonResponse
     {
         try {
-            if(  auth('sanctum')->id() !== $userId && auth('sanctum')->user()->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Viewing this user`s comments is not permitted',
-                'error' => 'unauthorized',
-            ], 403);
-        }
-        $comments = Comments::where('user_id', $userId)
-                           ->with('user')
-                           ->latest()
-                           ->paginate(15);
+            if (auth('sanctum')->id() !== $userId && auth('sanctum')->user()->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Viewing this user`s comments is not permitted',
+                    'error' => 'unauthorized',
+                ], 403);
+            }
+            $comments = Comments::where('user_id', $userId)
+                ->with('user')
+                ->latest()
+                ->paginate(15);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -253,13 +269,13 @@ class CommentsController extends Controller
 
     /**
      * GET /api/v1/{commentable_type}/{id}/comments/count
-     * الحصول على عدد التعليقات لـ مورد معين
+     * Get the count of comments for a specific resource
      */
     public function count(string $commentableType, int $commentableId): JsonResponse
     {
         $count = Comments::where('commentable_type', $commentableType)
-                        ->where('commentable_id', $commentableId)
-                        ->count();
+            ->where('commentable_id', $commentableId)
+            ->count();
 
         return response()->json([
             'success' => true,
@@ -273,21 +289,20 @@ class CommentsController extends Controller
 
     /**
      * POST /api/v1/{commentable_type}/{id}/comments
-     * إضافة تعليق مباشرة على موضوع
+     * Add a comment directly on a topic
      *
-     * بديل لـ /api/v1/comments (أسهل للـ frontend)
+     * Alternative to /api/v1/comments (easier for frontend)
      */
     public function storeOnResource(
         string $commentableType,
         int $commentableId,
         Request $request
-    ): JsonResponse
-    {
+    ): JsonResponse {
         // Check authentication
         if (!auth('sanctum')->check()) {
             return response()->json([
                 'success' => false,
-                'message' => 'مطلوب تسجيل الدخول',
+                'message' => 'Login is required',
                 'error' => 'unauthenticated',
             ], 401);
         }
@@ -296,9 +311,9 @@ class CommentsController extends Controller
         $validated = $request->validate([
             'content' => 'required|string|min:3|max:1000',
         ], [
-            'content.required' => 'محتوى التعليق مطلوب',
-            'content.min' => 'محتوى التعليق يجب أن يكون 3 أحرف على الأقل',
-            'content.max' => 'محتوى التعليق لا يجب أن يتجاوز 1000 حرف',
+            'content.required' => 'Comment content is required',
+            'content.min' => 'Comment content must be at least 3 characters',
+            'content.max' => 'Comment content must not exceed 1000 characters',
         ]);
 
         // Validate type
@@ -306,7 +321,7 @@ class CommentsController extends Controller
         if (!in_array($commentableType, $validTypes)) {
             return response()->json([
                 'success' => false,
-                'message' => 'نوع المورد غير صحيح',
+                'message' => 'Resource type is invalid',
                 'error' => 'invalid_type',
             ], 400);
         }
@@ -322,7 +337,7 @@ class CommentsController extends Controller
         if (!$model::find($commentableId)) {
             return response()->json([
                 'success' => false,
-                'message' => "المورد ($commentableType) غير موجود",
+                'message' => "The resource ($commentableType) does not exist",
                 'error' => 'not_found',
             ], 404);
         }
@@ -337,7 +352,7 @@ class CommentsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إضافة التعليق بنجاح',
+            'message' => 'Comment added successfully',
             'data' => CommentResource::make($comment->load('user')),
         ], 201);
     }

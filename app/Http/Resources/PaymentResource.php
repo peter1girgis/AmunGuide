@@ -17,7 +17,7 @@ class PaymentResource extends JsonResource
         return [
             'id' => $this->id,
 
-            // معلومات الدفع الأساسية
+            // Basic payment information
             'amount' => (float) $this->amount,
             'status' => $this->status,
             'status_label' => $this->getStatusLabel(),
@@ -26,7 +26,7 @@ class PaymentResource extends JsonResource
             'payment_method' => $this->payment_method,
             'notes'          => $this->notes,
 
-            // معلومات المستخدم الدافع
+            // Payer user information
             'payer' => [
                 'id' => $this->payer->id,
                 'name' => $this->payer->name,
@@ -34,12 +34,12 @@ class PaymentResource extends JsonResource
                 'role' => $this->payer->role,
             ],
 
-            // معلومات المورد المدفوع
+            // Resource being paid information
             'payable' => [
                 'type' => $this->payable_type,
                 'type_name' => $this->payable_type_name,
                 'id' => $this->payable_id,
-                // إضافة تفاصيل المورد إذا كان محملاً
+                // Add resource details if loaded
                 'details' => $this->when(
                     $this->relationLoaded('payable'),
                     function () {
@@ -48,19 +48,19 @@ class PaymentResource extends JsonResource
                 ),
             ],
 
-            // التواريخ
+            // Dates
             'created_at' => $this->created_at->toDateTimeString(),
             'created_at_human' => $this->created_at->diffForHumans(),
             'updated_at' => $this->updated_at->toDateTimeString(),
 
-            // معلومات إضافية
+            // Additional information
             'can_update' => $this->canUpdate($request->user()),
             'can_delete' => $this->canDelete($request->user()),
         ];
     }
 
     /**
-     * الحصول على تسمية الحالة
+     * Get status label
      */
     private function getStatusLabel(): string
     {
@@ -73,7 +73,7 @@ class PaymentResource extends JsonResource
     }
 
     /**
-     * الحصول على تفاصيل المورد المدفوع
+     * Get details of the resource being paid
      */
     private function getPayableDetails(): ?array
     {
@@ -81,7 +81,7 @@ class PaymentResource extends JsonResource
             return null;
         }
 
-        // حسب نوع المورد، نعرض تفاصيل مختلفة
+        // Depending on resource type, display different details
         if ($this->payable_type === 'App\\Models\\Tour_bookings') {
             return [
                 'booking_id' => $this->payable->id,
@@ -106,7 +106,7 @@ class PaymentResource extends JsonResource
     }
 
     /**
-     * التحقق من إمكانية التحديث
+     * Check if update is possible
      */
     private function canUpdate($user): bool
     {
@@ -114,17 +114,17 @@ class PaymentResource extends JsonResource
             return false;
         }
 
-        // Admin يمكنه تحديث أي دفعة
+        // Admin can update any payment
         if ($user->role === 'admin') {
             return true;
         }
 
-        // المستخدم يمكنه تحديث دفعاته المعلقة فقط
+        // User can only update their pending payments
         return $this->payer_id === $user->id && $this->status === 'pending';
     }
 
     /**
-     * التحقق من إمكانية الحذف
+     * Check if deletion is possible
      */
     private function canDelete($user): bool
     {
@@ -132,12 +132,12 @@ class PaymentResource extends JsonResource
             return false;
         }
 
-        // Admin فقط يمكنه الحذف
+        // Only admin can delete
         if ($user->role === 'admin') {
             return true;
         }
 
-        // المستخدم يمكنه حذف دفعاته المعلقة فقط
+        // User can only delete their pending payments
         return $this->payer_id === $user->id && $this->status === 'pending';
     }
 
