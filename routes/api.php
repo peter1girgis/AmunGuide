@@ -38,6 +38,25 @@ use App\Http\Controllers\Api\TourController;
 Route::prefix('v1')->group(function () {
 
     /*
+    |======================================================================
+    | 🎯 PLACES ROUTES - IMPORTANT: ORDER MATTERS!
+    |======================================================================
+    |
+    | ⚠️  STATIC ROUTES MUST COME BEFORE DYNAMIC ROUTES
+    | Otherwise Laravel will match 'search' as {place} parameter
+    |
+    | Correct order:
+    | 1. Static routes (places/search, places/trending, places/filter)
+    | 2. List route (places)
+    | 3. Dynamic routes (places/{id})
+    |
+    */
+
+    // =========================================================================
+    // 🚀 STATIC ROUTES (Must be FIRST)
+    // =========================================================================
+
+    /*
     |----------------------------------------------------------------------
     | GET /api/v1/places/search
     |----------------------------------------------------------------------
@@ -45,8 +64,8 @@ Route::prefix('v1')->group(function () {
     | Method      : GET
     | URL         : /api/v1/places/search
     | Auth        : None
-    | Query Params: q (string, required)
-    | Success (200): { "success": true, "data": [...] }
+    | Query Params: q (string, required, min 3 chars)
+    | Success (200): { "success": true, "data": [...], "pagination": {...} }
     |----------------------------------------------------------------------
     */
     Route::get('places/search', [PlaceController::class, 'search'])
@@ -75,12 +94,16 @@ Route::prefix('v1')->group(function () {
     | Method      : GET
     | URL         : /api/v1/places/filter
     | Auth        : None
-    | Query Params: min_price, max_price, rating (all optional)
+    | Query Params: min_price, max_price, sort (all optional)
     | Success (200): { "success": true, "data": [...], "pagination": {...} }
     |----------------------------------------------------------------------
     */
     Route::get('places/filter', [PlaceController::class, 'filter'])
         ->name('places.filter');
+
+    // =========================================================================
+    // 📋 PAGINATION ROUTE (After static, before dynamic)
+    // =========================================================================
 
     /*
     |----------------------------------------------------------------------
@@ -96,6 +119,10 @@ Route::prefix('v1')->group(function () {
     */
     Route::get('places', [PlaceController::class, 'index'])
         ->name('places.index');
+
+    // =========================================================================
+    // 🔍 DYNAMIC ROUTES (Must be LAST)
+    // =========================================================================
 
     /*
     |----------------------------------------------------------------------
@@ -116,6 +143,10 @@ Route::prefix('v1')->group(function () {
         ->missing(function () {
             return response()->json(['message' => 'Record not found'], 404);
         });
+
+    // =========================================================================
+    // 🔐 AUTHENTICATED ROUTES (Admin only)
+    // =========================================================================
 
     Route::middleware('auth:sanctum')->group(function () {
 
@@ -175,9 +206,9 @@ Route::prefix('v1')->group(function () {
             ->missing(function () {
                 return response()->json(['message' => 'Record not found'], 404);
             });
-    });
 
-
+    }); // end auth:sanctum — Places
+    
     // =========================================================================
     // PUBLIC TOUR ROUTES (Guest + Authenticated with activity tracking)
     // =========================================================================
