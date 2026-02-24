@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ['...', 'php82', 'php82Packages.composer']
+# تم إضافة pdo_mysql لتمكين الاتصال بقاعدة البيانات
+nixPkgs = ['php82', 'php82Packages.composer', 'php82Extensions.pdo_mysql']
 
 [phases.install]
 cmds = [
@@ -10,8 +11,12 @@ cmds = [
 cmds = [
     'php artisan config:cache',
     'php artisan route:cache',
-    'php artisan view:cache'
+    'php artisan view:cache',
+    # تأكد من إعطاء صلاحيات للمجلدات المطلوبة
+    'chmod -R 775 storage bootstrap/cache'
 ]
 
 [start]
-cmd = 'php artisan serve --host=0.0.0.0 --port=$PORT'
+# في الإنتاج يفضل استخدام سكريبت entrypoint أو تشغيل السيرفر مباشرة عبر PHP
+# إذا كنت تستخدم سكريبت railway-entrypoint.sh الذي جهزناه سابقاً:
+cmd = 'sh railway-entrypoint.sh'
