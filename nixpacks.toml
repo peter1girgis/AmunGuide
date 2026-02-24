@@ -1,23 +1,18 @@
 [phases.setup]
-nixPkgs = ['...', 'php84Extensions.gd', 'php84Extensions.redis']
+nixPkgs = ['php82', 'php82Packages.composer', 'php82Extensions.pdo_mysql']
+
+[phases.install]
+cmds = [
+    'composer install --no-dev --optimize-autoloader'
+]
 
 [phases.build]
 cmds = [
-    'composer install --no-dev --optimize-autoloader --no-interaction',
-    'npm install',
-    'npm run build',
     'php artisan config:cache',
     'php artisan route:cache',
-    'php artisan view:cache'
+    'php artisan view:cache',
+    'chmod -R 775 storage bootstrap/cache'
 ]
 
 [start]
-cmd = 'php artisan migrate --force && php artisan optimize && php artisan serve --host=0.0.0.0 --port=$PORT'
-```
-
-#### ب) تحديث `.gitignore`
-تأكد إن الملفات دي **مش** موجودة في `.gitignore`:
-```
-# تأكد إن دول مش موجودين
-# /public/build
-# /bootstrap/cache
+cmd = 'sh railway-entrypoint.sh'
