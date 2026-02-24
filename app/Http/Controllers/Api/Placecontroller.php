@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PlaceResource;
-// use App\Http\Requests\Place\StorePlaceRequest;
+use App\Http\Requests\Place\StorePlaceRequest;
+use App\Http\Requests\Place\UpdatePlaceRequest;
 use App\Models\Places;
 use App\Models\User_activities;
 use Illuminate\Http\Request;
@@ -287,22 +288,10 @@ class PlaceController extends Controller
      *
      * ✅ Admin only (protected by middleware)
      */
-    public function store(Request $request): JsonResponse
+    public function store(StorePlaceRequest $request): JsonResponse
     {
-        if(!auth('sanctum')->user() || auth('sanctum')->user()->role !== 'admin'){
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized | Only Admin can access.',
-            ], 403);
-        }
         try {
-            $validated = $request->validate([
-                'title' => 'required|string|max:255|unique:places,title',
-                'description' => 'required|string|min:10|max:5000',
-                'ticket_price' => 'required|numeric|min:0|max:10000',
-                'rating' => 'nullable|numeric|min:0|max:5',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            ]);
+            $validated = $request->validated();
 
             $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']);
 
@@ -344,16 +333,10 @@ class PlaceController extends Controller
      *
      * ✅ Admin only (protected by middleware)
      */
-    public function update(Request $request, Places $place): JsonResponse
+    public function update(UpdatePlaceRequest $request, Places $place): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'title' => 'sometimes|string|max:255|unique:places,title,' . $place->id,
-                'description' => 'sometimes|string|min:10|max:5000',
-                'ticket_price' => 'sometimes|numeric|min:0|max:10000',
-                'rating' => 'nullable|numeric|min:0|max:5',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            ]);
+            $validated = $request->validated();
 
             if (isset($validated['title'])) {
                 $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']);
