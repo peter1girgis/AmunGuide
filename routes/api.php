@@ -28,7 +28,9 @@ use App\Http\Controllers\Api\TourController;
 |
 */
 
-
+Route::get('/', function () {
+    return response()->json(['message' => 'Welcome to Amun Guide API']);
+});
 /*
 |==========================================================================
 | Places · Tours · Comments · Likes
