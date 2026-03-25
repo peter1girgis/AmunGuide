@@ -20,6 +20,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Mail::alwaysTo('delivered@resend.dev');
+        Mail::alwaysTo('khaledbadawy315@gmail.com');
     }
 }
