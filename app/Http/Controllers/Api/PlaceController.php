@@ -295,10 +295,10 @@ class PlaceController extends Controller
 
             $validated['slug'] = \Illuminate\Support\Str::slug($validated['title']);
 
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('places', 'public');
-                $validated['image'] = $path;
-            }
+            // if ($request->hasFile('image')) {
+            //     $path = $request->file('image')->store('places', 'public');
+            //     $validated['image'] = $path;
+            // }
 
             $place = Places::create($validated);
 

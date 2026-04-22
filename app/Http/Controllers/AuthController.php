@@ -41,21 +41,21 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|max:255',
-            'profile_image' => 'nullable|image|max:2048',
+            'profile_image' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
         ]);
 
-        $path = null;
-        if ($request->hasFile('profile_image')) {
-            $path = $request->file('profile_image')->store('profiles', 'public');
-        }
+        // $path = null;
+        // if ($request->hasFile('profile_image')) {
+        //     $path = $request->file('profile_image')->store('profiles', 'public');
+        // }
 
         $user = User::create([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'profile_image' => $path,
+            'profile_image' => $validated['profile_image'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
         ]);

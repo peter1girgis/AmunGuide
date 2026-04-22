@@ -259,10 +259,10 @@ class PaymentController extends Controller
             }
 
             // --- Required modifications (upload image) ---
-            $receiptPath = null;
-            if ($request->hasFile('receipt_image')) {
-                $receiptPath = $request->file('receipt_image')->store('payments/receipts', 'public');
-            }
+            // $receiptPath = null;
+            // if ($request->hasFile('receipt_image')) {
+            //     $receiptPath = $request->file('receipt_image')->store('payments/receipts', 'public');
+            // }
 
             // --- Add new fields to function ---
             $payment = Payments::createPayment(
@@ -271,7 +271,7 @@ class PaymentController extends Controller
                 payableType: $payableType,
                 payableId: $validated['payable_id'],
                 status: 'pending',
-                receiptImage: $receiptPath, // New field
+                receiptImage: $validated['receipt_image'] ?? null, // New field
                 transactionId: $validated['transaction_id'] ?? null, // New field
                 paymentMethod: $validated['payment_method'] ?? null, // New field
                 notes: $validated['notes'] ?? null // New field

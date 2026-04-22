@@ -18,7 +18,7 @@ class StorePlaceRequest extends FormRequest
             'description' => 'required|string|min:10|max:5000',
 
             'ticket_price' => 'required|numeric|min:0|max:10000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|string|max:255',
 
             'rating' => 'nullable|numeric|min:0|max:5',
         ];
