@@ -80,6 +80,8 @@ class TourResource extends JsonResource
             'places' => PlaceResource::collection($this->places),
             'places_count' => $this->places->count(),
 
+            'comments' => CommentResource::collection($this->comments),
+            'likes' => LikeResource::collection($this->likes),
             // ──────────────────────────────────────────────────
             // Booking Statistics
             // ──────────────────────────────────────────────────

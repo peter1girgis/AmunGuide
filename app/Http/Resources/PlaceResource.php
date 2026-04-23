@@ -28,6 +28,9 @@ class PlaceResource extends JsonResource
             // ✅ Media
             'image' => $this->image ? asset('storage/' . $this->image) : null,
 
+            'comments' => $this->comments ? CommentResource::collection($this->comments) : [],
+            'likes' => $this->likes ? LikeResource::collection($this->likes) : [],
+
             // ✅ Timestamps
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),

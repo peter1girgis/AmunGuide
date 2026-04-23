@@ -34,7 +34,13 @@ class TourController extends Controller
     {
         try {
             // ✅ Start with active tours only
-            $query = Tours::query()->active();
+            $query = Tours::with([
+                'guide:id,name,phone,email',
+                'places:places.id,places.title,places.description',
+                'plan.planItems.place',
+                'comments.user',
+                'likes.user',
+            ]);
 
             // ✅ Use scopes for filtering
             if ($request->has('guide_id')) {
@@ -114,6 +120,8 @@ class TourController extends Controller
                 'guide:id,name,phone,email',
                 'places:places.id,places.title,places.description',
                 'plan.planItems.place',
+                'comments.user',
+                'likes.user',
             ]);
 
             return response()->json([
@@ -154,7 +162,13 @@ class TourController extends Controller
             $tours = Tours::query()
                 ->active()
                 ->Search($query)
-                ->with(['guide:id,name,phone'])
+                ->with([
+                    'guide:id,name,phone,email',
+                    'places:places.id,places.title,places.description',
+                    'plan.planItems.place',
+                    'comments.user',
+                    'likes.user',
+                ])
                 ->latest('created_at')
                 ->paginate($request->get('per_page', 15));
                 // ✅ Track search activity
@@ -223,7 +237,13 @@ class TourController extends Controller
             }
 
             // ✅ Build query with scopes
-            $query = Tours::query()->active();
+            $query = Tours::with([
+                'guide:id,name,phone,email',
+                'places:places.id,places.title,places.description',
+                'plan.planItems.place',
+                'comments.user',
+                'likes.user',
+            ]);
 
             if ($request->has('min_price') && $request->has('max_price')) {
                 $query->priceBetween(
@@ -285,7 +305,13 @@ class TourController extends Controller
             $tours = Tours::query()
                 ->active()
                 ->popular($limit)
-                ->with(['guide:id,name,phone'])
+                ->with([
+                    'guide:id,name,phone,email',
+                    'places:places.id,places.title,places.description',
+                    'plan.planItems.place',
+                    'comments.user',
+                    'likes.user',
+                    ])
                 ->get();
 
             return response()->json([
