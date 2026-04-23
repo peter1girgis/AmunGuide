@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,5 +22,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Mail::alwaysTo('delivered@resend.dev');
+        Relation::morphMap([
+            'places' => \App\Models\Places::class,
+            'tours'  => \App\Models\Tours::class, // إذا كانت تُخزن tours أيضاً
+        ]);
     }
 }

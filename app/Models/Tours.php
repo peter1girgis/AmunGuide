@@ -40,7 +40,7 @@ class Tours extends Model
      */
     public function tourPlaces()
     {
-        return $this->hasMany(Tour_place::class);
+        return $this->hasMany(Tour_place::class, 'tour_id');
     }
 
     /**
