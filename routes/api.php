@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\RagMessageController;
 use App\Http\Controllers\Api\TourController;
 
 /*
@@ -39,6 +40,10 @@ Route::get('/', function () {
 */
 Route::prefix('v1')->group(function () {
 
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('chat/rag-message', [RagMessageController::class, 'index']);
+    });
     /*
     |======================================================================
     | 🎯 PLACES ROUTES - IMPORTANT: ORDER MATTERS!
@@ -210,7 +215,7 @@ Route::prefix('v1')->group(function () {
             });
 
     }); // end auth:sanctum — Places
-    
+
     // =========================================================================
     // PUBLIC TOUR ROUTES (Guest + Authenticated with activity tracking)
     // =========================================================================
