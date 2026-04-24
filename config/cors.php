@@ -17,23 +17,18 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_origins' => [
-        'http://localhost:8080',
-        'https://amun-guide-application.up.railway.app'
-    ],
+    'allowed_methods' => ['*'],
 
-    'allowed_methods' => ['*'], // بيسمح بكل العمليات GET, POST...
-
-    'allowed_headers' => ['*'], // بيسمح بكل الـ Headers
-
-    'supports_credentials' => true,
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
     'max_age' => 0,
 
+    'supports_credentials' => false,
 
 ];
