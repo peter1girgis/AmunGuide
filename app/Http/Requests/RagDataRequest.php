@@ -20,6 +20,9 @@ class RagDataRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'filter'   => ['nullable', 'array'],
+            'filter.*' => ['string', \Illuminate\Validation\Rule::in(['places', 'tours', 'plans', 'user'])],
+        ];
     }
 }

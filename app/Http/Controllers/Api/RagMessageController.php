@@ -21,51 +21,71 @@ use Illuminate\Http\JsonResponse;
  *   - All plans in the system
  *   - Authenticated user's own plans
  *
- * ✅ Single endpoint  GET /api/v1/chat/rag-message
+ * ✅ Single endpoint  POST /api/v1/chat/rag-message
  * ✅ Auth required    Sanctum token
- * ✅ No input body    Only returns data — no message processing here
+ * ✅ Optional filter  { "filter": ["places", "tours", "plans"] }
+ *    If no filter sent → returns everything
  */
 class RagMessageController extends Controller
 {
     /**
-     * GET /api/v1/chat/rag-message
+     * POST /api/v1/chat/rag-message
      *
-     * Returns full project data snapshot for the RAG AI pipeline.
+     * Returns full (or filtered) project data snapshot for the RAG AI pipeline.
      *
      * Headers required:
      *   Authorization: Bearer {sanctum_token}
      *   Accept:        application/json
+     *   Content-Type:  application/json
+     *
+     * Body (optional):
+     * {
+     *   "filter": ["places", "tours", "plans"]
+     * }
+     * If "filter" is not provided → all sections are returned.
      */
     public function index(RagDataRequest $request): JsonResponse
     {
         try {
             $authUser = auth('sanctum')->user();
 
+            // ── Determine which sections to filter ────────────────────────
+            // input() بيقرأ الـ request body مباشرةً بغض النظر عن الـ validation
+            // لو مفيش filter في الـ body → يرجع كل حاجة بالـ default
+            $filter = $request->input('filter', ['places', 'tours', 'plans']);
+
             // ── 1. Load authenticated user with their own plans ──────────
             $authUser->load([
                 'plans.planItems.place',
             ]);
 
-            // ── 2. Load ALL places with comments (+ author) and likes ────
-            $places = Places::with([
-                'comments.user',
-                'likes.user',
-            ])->latest()->get();
+            // ── 2. Load ALL places (only if requested) ────────────────────
+            $places = in_array('places', $filter)
+                ? Places::with([
+                    'comments.user',
+                    'likes.user',
+                ])->latest()->get()
+                : collect();
 
-            // ── 3. Load ALL tours with guide, tourPlaces, linked plan, comments and likes ─
-            $tours = Tours::with([
-                'guide',
-                'plan',
-                'tourPlaces.place',
-                'comments.user',
-                'likes.user',
-            ])->latest()->get();
+            // ── 3. Load ALL tours (only if requested) ─────────────────────
+            $tours = in_array('tours', $filter)
+                ? Tours::with([
+                    'guide',
+                    'plan',
+                    'tourPlaces.place',
+                    'comments.user',
+                    'likes.user',
+                    'payments',
+                ])->latest()->get()
+                : collect();
 
-            // ── 4. Load ALL plans with owner + items + places ─────────────
-            $allPlans = Plans::with([
-                'user',
-                'planItems.place',
-            ])->latest()->get();
+            // ── 4. Load ALL plans (only if requested) ─────────────────────
+            $allPlans = in_array('plans', $filter)
+                ? Plans::with([
+                    'user',
+                    'planItems.place',
+                ])->latest()->get()
+                : collect();
 
             // ── 5. Build resource payload ─────────────────────────────────
             $resourcePayload = [
@@ -73,6 +93,7 @@ class RagMessageController extends Controller
                 'places'    => $places,
                 'tours'     => $tours,
                 'all_plans' => $allPlans,
+                'filter'    => $filter,
             ];
 
             return response()->json([

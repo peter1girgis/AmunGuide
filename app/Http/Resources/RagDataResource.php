@@ -8,53 +8,68 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * RagDataResource
  *
- * Transforms the full project data snapshot into a structured,
+ * Transforms the full (or filtered) project data snapshot into a structured,
  * AI-friendly format for the RAG (Retrieval-Augmented Generation) pipeline.
  *
- * Structure:
+ * Structure (depends on requested "filter"):
  * {
  *   "user":    { ...authenticated user info + their plans },
- *   "places":  [ { ...place, comments, likes } ],
- *   "tours":   [ { ...tour, places, plan } ],
- *   "plans":   [ { ...all public plans with items } ],
- *   "meta":    { counts, generated_at }
+ *   "places":  [ { ...place, comments, likes } ],      // only if included
+ *   "tours":   [ { ...tour, places, plan } ],          // only if included
+ *   "plans":   [ { ...all public plans with items } ], // only if included
+ *   "meta":    { counts, filter_sections, generated_at }
  * }
  */
 class RagDataResource extends JsonResource
 {
     /**
      * $resource holds the raw data array assembled by the controller.
-     * Shape: ['user' => User, 'places' => Collection, 'tours' => Collection, 'all_plans' => Collection]
+     * Shape:
+     * [
+     *   'user'      => User,
+     *   'places'    => Collection,
+     *   'tours'     => Collection,
+     *   'all_plans' => Collection,
+     *   'filter'    => ['places', 'tours', 'plans'],
+     * ]
      */
     public function toArray(Request $request): array
     {
-        $authUser   = $this->resource['user'];
-        $places     = $this->resource['places'];
-        $tours      = $this->resource['tours'];
-        $allPlans   = $this->resource['all_plans'];
+        $authUser = $this->resource['user'];
+        $places   = $this->resource['places'];
+        $tours    = $this->resource['tours'];
+        $allPlans = $this->resource['all_plans'];
+        $filter   = $this->resource['filter'] ?? ['places', 'tours', 'plans'];
 
-        return [
-            // ─── Authenticated User ──────────────────────────────────────
+        // ── Build response dynamically based on requested sections ───────
+        $response = [
+            // User is always included (needed for context)
             'user' => $this->formatUser($authUser),
-
-            // ─── All Places (with comments + likes) ──────────────────────
-            'places' => $places->map(fn ($place) => $this->formatPlace($place))->values(),
-
-            // ─── All Tours (with their places + plan link) ────────────────
-            'tours' => $tours->map(fn ($tour) => $this->formatTour($tour))->values(),
-
-            // ─── All Plans in the system ──────────────────────────────────
-            'plans' => $allPlans->map(fn ($plan) => $this->formatPlan($plan))->values(),
-
-            // ─── Meta ─────────────────────────────────────────────────────
-            'meta' => [
-                'total_places'   => $places->count(),
-                'total_tours'    => $tours->count(),
-                'total_plans'    => $allPlans->count(),
-                'user_plans'     => $authUser->plans?->count() ?? 0,
-                'generated_at'   => now()->toDateTimeString(),
-            ],
         ];
+
+        if (in_array('places', $filter)) {
+            $response['places'] = $places->map(fn ($place) => $this->formatPlace($place))->values();
+        }
+
+        if (in_array('tours', $filter)) {
+            $response['tours'] = $tours->map(fn ($tour) => $this->formatTour($tour))->values();
+        }
+
+        if (in_array('plans', $filter)) {
+            $response['plans'] = $allPlans->map(fn ($plan) => $this->formatPlan($plan))->values();
+        }
+
+        // ── Meta ──────────────────────────────────────────────────────────
+        $response['meta'] = [
+            'filter_sections' => $filter,
+            'total_places'    => in_array('places', $filter) ? $places->count() : null,
+            'total_tours'     => in_array('tours', $filter)  ? $tours->count()  : null,
+            'total_plans'     => in_array('plans', $filter)  ? $allPlans->count(): null,
+            'user_plans'      => $authUser->plans?->count() ?? 0,
+            'generated_at'    => now()->toDateTimeString(),
+        ];
+
+        return $response;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -134,6 +149,15 @@ class RagDataResource extends JsonResource
             'payment_method' => $tour->payment_method,
             'details'        => $tour->details,
 
+            // Payments summary (total paid + status counts)
+            'payments_summary' => [
+                'total_paid'    => (float) $tour->paid_amount,
+                'status_counts' => [
+                    'pending'  => $tour->payments->where('status', 'pending')->count(),
+                    'approved' => $tour->payments->where('status', 'approved')->count(),
+                ],
+            ],
+
             // Guide (tour creator)
             'guide' => $tour->guide ? [
                 'id'   => $tour->guide->id,
@@ -210,17 +234,17 @@ class RagDataResource extends JsonResource
                 ? $plan->planItems
                     ->sortBy('day_index')
                     ->map(fn ($item) => [
-                        'day_index'   => $item->day_index,
-                        'place_id'    => $item->place?->id,
-                        'place_title' => $item->place?->title,
-                        'ticket_price'=> $item->place ? (float) $item->place->ticket_price : null,
-                        'rating'      => $item->place?->rating ? (float) $item->place->rating : null,
+                        'day_index'    => $item->day_index,
+                        'place_id'     => $item->place?->id,
+                        'place_title'  => $item->place?->title,
+                        'ticket_price' => $item->place ? (float) $item->place->ticket_price : null,
+                        'rating'       => $item->place?->rating ? (float) $item->place->rating : null,
                     ])->values()
                 : [],
 
-            'total_days'  => $plan->planItems?->pluck('day_index')->filter()->unique()->count() ?? 0,
-            'total_places'=> $plan->planItems?->count() ?? 0,
-            'created_at'  => $plan->created_at->toDateTimeString(),
+            'total_days'   => $plan->planItems?->pluck('day_index')->filter()->unique()->count() ?? 0,
+            'total_places' => $plan->planItems?->count() ?? 0,
+            'created_at'   => $plan->created_at->toDateTimeString(),
         ];
     }
 }
