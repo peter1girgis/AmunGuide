@@ -41,7 +41,7 @@ Route::get('/', function () {
 Route::prefix('v1')->group(function () {
 
 
-    Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
         Route::post('chat/rag-message', [RagMessageController::class, 'index']);
     });
     /*
