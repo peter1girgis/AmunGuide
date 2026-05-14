@@ -38,12 +38,16 @@ class AuthController extends Controller
     }
     public function register(Request $request){
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|max:255',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|email|max:255|unique:users,email',
+            'password'      => 'required|string|min:8|max:255',
             'profile_image' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:255',
+            'role'          => 'required|in:tourist,guide', // بنحدد الاختيارات المتاحة
+
+            // الحقول دي هتبقى إجبارية فقط لو الـ role هو guide
+            'phone'         => 'required_if:role,guide|nullable|string|max:20',
+            'address'       => 'required_if:role,guide|nullable|string|max:255',
+            'national_id'   => 'required_if:role,guide|nullable|string|max:255',
         ]);
 
         // $path = null;
@@ -52,12 +56,14 @@ class AuthController extends Controller
         // }
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'name'          => $validated['name'],
+            'email'         => $validated['email'],
+            'password'      => Hash::make($validated['password']),
             'profile_image' => $validated['profile_image'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'address' => $validated['address'] ?? null,
+            'role'          => $validated['role'] ?? 'tourist', // إضافة الـ role هنا
+            'phone'         => $validated['phone'] ?? null,
+            'address'       => $validated['address'] ?? null,
+            'national_id'   => $validated['national_id'] ?? null, // لا تنسى إضافة الـ national_id
         ]);
 
         $token = $user->createToken('api_token')->plainTextToken;
