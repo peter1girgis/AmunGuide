@@ -13,7 +13,7 @@ use App\Http\Controllers\Api\PlaceController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\RagMessageController;
 use App\Http\Controllers\Api\TourController;
-
+use App\Http\Controllers\Api\Admin\AdminUserController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -44,6 +44,29 @@ Route::prefix('v1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
         Route::post('chat/rag-message', [RagMessageController::class, 'index']);
     });
+
+
+Route::prefix('Admin')->middleware(['auth:sanctum', 'admin'])
+    ->group(function () {
+
+        // User Management
+        Route::apiResource('users', AdminUserController::class)
+            ->only(['index', 'show', 'update', 'destroy']);
+
+        /*
+         * The four routes registered by the snippet above:
+         *
+         *  METHOD   URI                       ACTION    ROUTE NAME
+         *  GET      /api/v1/Admin/users          index     admin.users.index
+         *  GET      /api/v1/Admin/users/{user}   show      admin.users.show
+         *  PUT      /api/v1/Admin/users/{user}   update    admin.users.update
+         *  PATCH    /api/v1/Admin/users/{user}   update    admin.users.update
+         *  DELETE   /api/v1/Admin/users/{user}   destroy   admin.users.destroy
+         */
+    });
+
+
+
     /*
     |======================================================================
     | 🎯 PLACES ROUTES - IMPORTANT: ORDER MATTERS!
