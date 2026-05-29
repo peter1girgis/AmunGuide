@@ -8,7 +8,7 @@ class UpdatePlaceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()?->role === 'admin';
+        return auth()->user()?->role === 'admin' || auth()->user()?->role === 'guide';
     }
 
     public function rules(): array
