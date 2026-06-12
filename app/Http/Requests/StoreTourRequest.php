@@ -19,8 +19,8 @@ class StoreTourRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Only guides can create tours
-        return auth('sanctum')->check() && auth('sanctum')->user()->role === 'guide';
+        // Only guides and admins can create tours
+        return auth('sanctum')->check() && (auth('sanctum')->user()->role === 'guide' || auth('sanctum')->user()->role === 'admin');
     }
 
     /**
