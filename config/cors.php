@@ -21,6 +21,7 @@ return [
 
     'allowed_origins' => [
     'https://amun-guide-web.vercel.app',
+    'http://localhost:8080',
     //'*'
     ],
 
