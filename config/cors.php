@@ -19,7 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+    'https://amun-guide-web.vercel.app',
+    ],
 
     'allowed_origins_patterns' => [],
 
