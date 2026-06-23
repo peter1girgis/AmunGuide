@@ -1,6 +1,6 @@
 # 🏛️ AmunGuide API
 
-> محرك ذكي متكامل لإدارة السياحة وتخطيط الرحلات
+> A Smart, Full-Featured Engine for Tourism Management & Trip Planning
 
 [![Laravel Version](https://img.shields.io/badge/Laravel-10.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
@@ -9,90 +9,90 @@
 
 **🌐 Base URL:** `http://amun-guide.up.railway.app`
 
-**AmunGuide API** هو نظام خلفي متطور ومستقل (Decoupled RESTful API) مبني باستخدام إطار العمل **Laravel 10** ليكون النواة البرمجية لمنصة سياحية متكاملة في مصر. يدعم النظام تطبيقات الويب والهواتف الذكية عبر توفير بيئة مرنة وآمنة وقابلة للتوسع لإدارة المزارات السياحية، الجولات، حجوزات الأفواج، أنظمة الدفع الرقمية، ونظام متكامل مدعوم بالذكاء الاصطناعي (AI) لتخطيط الرحلات تلقائياً وتحليل سلوك المستخدمين.
+**AmunGuide API** is an advanced, decoupled RESTful API built with **Laravel 10**, serving as the core backend for a comprehensive tourism platform in Egypt. It supports web and mobile applications through a flexible, secure, and scalable environment for managing tourist attractions, tours, group bookings, digital payments, and an AI-powered system for automated trip planning and user behavior analysis.
 
 ---
 
-## 🚀 الميزات الرئيسية
+## 🚀 Core Features
 
-### 1. إدارة الهوية وصلاحيات المستخدمين (Multi-Role Authentication)
-- **دعم الأدوار المتقدمة:** تصنيف صارم للمستخدمين عبر صيغ `Tourist / Guide / Admin` مع تطبيق جدار حماية مخصص لكل دور عبر ميكانيزم الـ Middleware.
-- **توثيق آمن:** اعتماد حزمة **Laravel Sanctum** لإصدار وإدارة رموز الوصول الآمنة (Bearer Tokens).
-- **إدارة الحسابات:** ميزات متكاملة لتحديث الملف الشخصي، رفع الصور، واستعادة كلمات المرور عبر الإشعارات المخصصة.
+### 1. Multi-Role Authentication & Identity Management
+- **Advanced Role System:** Strict user classification across `Tourist / Guide / Admin` roles, enforced via dedicated Middleware guards.
+- **Secure Authentication:** **Laravel Sanctum** for issuing and managing Bearer Tokens.
+- **Account Management:** Full profile updates, image uploads, and password recovery via custom notifications.
 
-### 2. محرك إدارة المزارات السياحية والجولات (Places & Tours Hub)
-- **المزارات (Places):** دليل سياحي متكامل يدعم تصنيف الأماكن، إدارة البيانات الوصفية، والوسائط المتعددة (Images & Media).
-- **الجولات السياحية (Tours):** نظام مخصص للمرشدين لإنشاء جولات متكاملة، تحديد الأسعار، المواعيد، وربط الجولة بخطة سير زمنية محددة.
-- **البحث والفلترة:** محرك بحث ذكي يسمح بفلترة النتائج بناءً على معايير مركبة مثل الأسعار، التقييمات، والنوع.
+### 2. Places & Tours Hub
+- **Places:** A comprehensive tourist directory supporting place categorization, metadata management, and multimedia (Images & Media).
+- **Tours:** A dedicated system for guides to create full tour packages, set pricing, schedules, and link tours to detailed itineraries.
+- **Advanced Search & Filtering:** A smart search engine allowing users to filter results by compound criteria such as price, rating, and type.
 
-### 3. التخطيط الذكي لرحلات السفر (Custom Travel Itineraries)
-- **صانع الخطط (Plans Engine):** تمكين السياح من إنشاء خطط سفر مخصصة وجداول زمنية يومية (`Plan Items`) وربطها بأماكن سياحية معينة.
+### 3. Custom Travel Itineraries
+- **Plans Engine:** Enables tourists to create personalized travel plans and daily schedules (`Plan Items`), linked to specific tourist attractions.
 
-### 4. المساعد الذكي والـ AI Chatbot (Advanced RAG Integration)
-- **محادثات مخصصة السياق:** تتبع ذكي للمحادثات عبر نموذج بيانات مرن يدعم سياقات متعددة مثل `image_generation`, `travel_plan`, `info_request`, `place_inquiry`, `tour_inquiry`.
-- **تغذية نموذج الـ RAG:** تجميع وتشكيل فوري لبيانات المستخدم وتفضيلاته السياحية وعرضها على محرك الذكاء الاصطناعي لبناء استجابات دقيقة ومخصصة.
-- **الصور المولدة بالذكاء الاصطناعي:** تتبع وحفظ الصور المولدة آلياً للمستخدم خلال المحادثة بروابط آمنة.
+### 4. AI Chatbot & Advanced RAG Integration
+- **Context-Aware Conversations:** Smart conversation tracking via a flexible data model supporting multiple contexts: `image_generation`, `travel_plan`, `info_request`, `place_inquiry`, `tour_inquiry`.
+- **RAG Data Feed:** Real-time aggregation of user data, behaviors, and tourism preferences, delivered to the AI engine for accurate, personalized responses.
+- **AI-Generated Images:** Automated tracking and storage of images generated during conversations with secure URLs.
 
-### 5. التفاعلات متعددة الأشكال (Polymorphic Social Interaction)
-- **التعليقات (Polymorphic Comments):** نظام تعليقات موحد يخدم الجولات، الأماكن، والخطط السياحية في جدول واحد عبر بنية `morphs`.
-- **الإعجابات (Polymorphic Likes):** ميزة Toggle سريعة محمية من تكرار الإعجاب (`409 Conflict`).
+### 5. Polymorphic Social Interaction
+- **Polymorphic Comments:** A unified comment system serving tours, places, and plans in a single table via `morphs`.
+- **Polymorphic Likes:** A fast Toggle feature protected against duplicate likes (`409 Conflict`).
 
-### 6. لوحة التحليلات وتتبع السلوكيات (User Behavior Analytics)
-- **تتبع الأنشطة:** رصد فوري للزيارات، عمليات البحث، الإعجابات، التعليقات، وإنشاء الخطط.
-- **معالجة البيانات المعقدة:** محرك داخلي ذكي للتعامل مع البيانات المخزنة بصيغ JSON المركبة وتوفير خط زمني نظيف لسلوكيات المستخدم.
-- **إحصائيات إدارية (Global Trends):** رؤية شاملة حول المستخدمين النشطين، المزارات الأكثر رواجاً، وتحليل معدلات التفاعل.
+### 6. User Behavior Analytics Engine
+- **Activity Tracking:** Real-time logging of visits, searches (by keyword or filter criteria), likes, comments, and plan creation.
+- **Complex Data Processing:** An internal smart engine handling multi-layered JSON data, stripping structural noise (IP, User Agent) to deliver a clean user behavior timeline.
+- **Global Admin Trends:** Provides admins with a comprehensive view of active users, trending places, and cumulative engagement analytics.
 
-### 7. المدفوعات الآمنة والحجوزات (Secure Bookings & Payments)
-- **إدارة الحجوزات:** دورة حياة متكاملة تبدأ من إنشاء الطلب، التحقق من التوافر، وتحديث الحالة `Pending / Confirmed / Cancelled`.
-- **سجل المدفوعات:** توثيق آمن لعمليات الدفع الرقمي مع الاحتفاظ ببيانات المعاملات والأرقام المرجعية وحالات السداد.
+### 7. Secure Bookings & Payments
+- **Booking Lifecycle:** Full management from request creation, availability check, to status updates `Pending / Confirmed / Cancelled`.
+- **Payments Logging:** Secure documentation of digital payment operations linked to bookings, retaining transaction data, reference numbers, and payment statuses.
 
 ---
 
-## 🛠️ التقنيات المستخدمة (Tech Stack)
+## 🛠️ Tech Stack
 
-| التقنية | التفاصيل |
+| Layer | Technology |
 |---|---|
 | **Backend Framework** | Laravel 10 (PHP 8.2) |
-| **Database** | MySQL 8.0 مع Polymorphic Relations وIndexes محسّنة |
+| **Database** | MySQL 8.0 with Polymorphic Relations & optimized Indexes |
 | **Authentication** | Laravel Sanctum |
 | **API Standardization** | Laravel API Resources |
-| **Data Validation** | Form Requests مخصصة لكل Endpoint |
+| **Data Validation** | Custom Form Requests per Endpoint |
 | **Deployment** | Nixpacks + Docker Ready (Railway) |
 
 ---
 
-## 📂 بنية المجلدات
+## 📂 Directory Structure
 
 ```
 peter1girgis/AmunGuide/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/Api/
-│   │   │   ├── Admin/                     # لوحة تحكم الإدارة وصلاحيات المستخدمين
-│   │   │   ├── AnalysisController.php     # محرك التحليلات وتتبع الأنشطة
-│   │   │   ├── CommentsController.php     # نظام التعليقات متعدد الأشكال
-│   │   │   ├── ConversationController.php # محادثات الـ Chatbot وتوليد الصور
-│   │   │   ├── LikesController.php        # الإعجابات التفاعلية الموحدة
-│   │   │   ├── PaymentController.php      # معالجة وتوثيق المدفوعات
-│   │   │   ├── PlaceController.php        # إدارة المزارات السياحية والوسائط
-│   │   │   ├── PlanController.php         # محرك تخطيط الرحلات
-│   │   │   ├── RagMessageController.php   # معالجة رسائل الـ AI وتغذية الـ RAG
-│   │   │   └── TourBookingController.php  # إدارة حجز الجولات السياحية
-│   │   ├── Middleware/                    # جدران الحماية (Admin, Tourist, Guide)
-│   │   ├── Requests/                      # Form Requests لكل Endpoint
-│   │   └── Resources/                     # طبقة توحيد مخرجات الـ API
-│   ├── Models/                            # النماذج البرمجية وعلاقات Eloquent
-│   └── Notifications/                     # نظام الإشعارات واستعادة كلمة المرور
-├── config/                                # إعدادات CORS, Database, Cache, Sanctum
+│   │   │   ├── Admin/                     # Admin dashboard & user management
+│   │   │   ├── AnalysisController.php     # Analytics engine & activity tracking
+│   │   │   ├── CommentsController.php     # Polymorphic comments system
+│   │   │   ├── ConversationController.php # Chatbot conversations & image generation
+│   │   │   ├── LikesController.php        # Unified polymorphic likes
+│   │   │   ├── PaymentController.php      # Payment processing & logging
+│   │   │   ├── PlaceController.php        # Tourist places & media management
+│   │   │   ├── PlanController.php         # Trip planning & itineraries engine
+│   │   │   ├── RagMessageController.php   # AI message processing & RAG feed
+│   │   │   └── TourBookingController.php  # Tour group booking management
+│   │   ├── Middleware/                    # Role guards (Admin, Tourist, Guide)
+│   │   ├── Requests/                      # Form Requests per endpoint
+│   │   └── Resources/                     # API output transformation layer
+│   ├── Models/                            # Eloquent models & relationships
+│   └── Notifications/                     # Notifications & password recovery
+├── config/                                # CORS, Database, Cache, Sanctum configs
 ├── database/
-│   ├── migrations/                        # 19 Migration لبناء جداول قاعدة البيانات
-│   └── seeders/                           # البيانات الأولية للتجريب
+│   ├── migrations/                        # 19 migrations for full schema
+│   └── seeders/                           # Initial seed data for testing
 ├── routes/
-│   ├── api.php                            # 87 مسار برمجي منظم وموزع حسب الصلاحيات
+│   ├── api.php                            # 87 API routes organized by access level
 │   └── web.php
-├── nixpacks.toml                          # إعدادات بيئة التشغيل السحابية
-├── Procfile                               # أوامر التشغيل لمنصات الاستضافة
-└── railway-entrypoint.sh                  # سكربت التهيئة التلقائية عند كل Deployment
+├── nixpacks.toml                          # Cloud runtime configuration
+├── Procfile                               # Process definitions for hosting platforms
+└── railway-entrypoint.sh                  # Auto-setup script on each deployment
 ```
 
 ---
@@ -101,82 +101,82 @@ peter1girgis/AmunGuide/
 
 ### 🔐 Auth Module
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/register` | POST | Public | إنشاء حساب جديد (Tourist / Guide) |
-| `/api/v1/login` | POST | Public | تسجيل الدخول وإصدار Bearer Token |
-| `/api/v1/logout` | POST | Authenticated | إتلاف رمز التحقق وتسجيل الخروج |
-| `/api/v1/forgot-password` | POST | Public | إرسال رابط استعادة كلمة المرور |
+| `/api/v1/register` | POST | Public | Create a new account (Tourist / Guide) |
+| `/api/v1/login` | POST | Public | Login and issue a Bearer Token |
+| `/api/v1/logout` | POST | Authenticated | Revoke current token and logout |
+| `/api/v1/forgot-password` | POST | Public | Send a password reset link |
 
 ### 🏛️ Places Module
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/places` | GET | Public | جلب المزارات بنظام Pagination |
-| `/api/v1/places/{id}` | GET | Public | عرض التفاصيل الكاملة للمزار |
-| `/api/v1/places/filter` | GET | Public | فلترة الأماكن بالنوع والتصنيف الجغرافي |
-| `/api/v1/places` | POST | Admin Only | إضافة مزار سياحي جديد |
+| `/api/v1/places` | GET | Public | Fetch paginated tourist places |
+| `/api/v1/places/{id}` | GET | Public | Get full details of a tourist place |
+| `/api/v1/places/filter` | GET | Public | Filter places by type & geographic category |
+| `/api/v1/places` | POST | Admin Only | Add a new tourist place |
 
 ### 🗺️ Tours & Bookings Module
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/tours` | GET | Public | استعراض كافة الجولات المتاحة |
-| `/api/v1/tours/popular` | GET | Public | جلب الجولات الأكثر طلباً |
-| `/api/v1/tours` | POST | Guide Only | إنشاء جولة وربطها بخطة سير |
-| `/api/v1/bookings` | POST | Tourist Only | طلب حجز جولة سياحية |
-| `/api/v1/bookings/{id}` | PUT | Authenticated | تحديث حالة الحجز |
+| `/api/v1/tours` | GET | Public | Browse all available tours |
+| `/api/v1/tours/popular` | GET | Public | Get the most popular tours |
+| `/api/v1/tours` | POST | Guide Only | Create a tour linked to an itinerary |
+| `/api/v1/bookings` | POST | Tourist Only | Request a tour booking |
+| `/api/v1/bookings/{id}` | PUT | Authenticated | Update booking status |
 
 ### 🤖 AI Chatbot & RAG Module
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/conversations` | POST | Authenticated | بدء جلسة محادثة جديدة مع البوت |
-| `/api/v1/conversations` | GET | Authenticated | جلب أرشيف محادثات المستخدم |
-| `/api/v1/conversations/{id}/messages` | POST | Authenticated | إرسال رسالة واستقبال رد الـ AI |
-| `/api/v1/rag/data` | GET | Authenticated | تجهيز الملف السلوكي للمستخدم للـ RAG |
+| `/api/v1/conversations` | POST | Authenticated | Start a new chatbot conversation |
+| `/api/v1/conversations` | GET | Authenticated | Retrieve user conversation history |
+| `/api/v1/conversations/{id}/messages` | POST | Authenticated | Send a message and receive AI response |
+| `/api/v1/rag/data` | GET | Authenticated | Compile user behavioral profile for RAG |
 
 ### 📈 Analytics Module
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/analysis/my-data` | GET | Authenticated | الخط الزمني لجميع تفاعلات المستخدم |
-| `/api/v1/analysis/global-trends` | GET | Admin Only | لوحة الإحصائيات العامة للمنصة |
+| `/api/v1/analysis/my-data` | GET | Authenticated | Full timeline of user interactions |
+| `/api/v1/analysis/global-trends` | GET | Admin Only | Platform-wide stats & trending places |
 
 ### 💬 Polymorphic Likes & Comments
 
-| Endpoint | Method | Access | الوصف |
+| Endpoint | Method | Access | Description |
 |---|---|---|---|
-| `/api/v1/likes/toggle` | POST | Authenticated | إضافة أو إزالة إعجاب من Tour / Place / Plan |
-| `/api/v1/comments` | POST | Authenticated | إضافة تعليق على جولة أو مكان |
-| `/api/v1/{type}/{id}/comments` | POST | Authenticated | مسار مباشر لإضافة تعليق |
+| `/api/v1/likes/toggle` | POST | Authenticated | Add or remove a like from Tour / Place / Plan |
+| `/api/v1/comments` | POST | Authenticated | Add a comment on a tour or place |
+| `/api/v1/{type}/{id}/comments` | POST | Authenticated | Direct route for adding a comment |
 
 ---
 
-## ⚙️ التشغيل المحلي (Local Setup)
+## ⚙️ Local Setup
 
 ```bash
-# 1. إعداد ملف البيئة
+# 1. Set up environment file
 cp .env.example .env
 
-# 2. تثبيت الحزم
+# 2. Install dependencies
 composer install
 
-# 3. توليد المفتاح التشفيري
+# 3. Generate application key
 php artisan key:generate
 
-# 4. ضبط إعدادات قاعدة البيانات في .env ثم تشغيل الـ Migrations
+# 4. Configure database in .env, then run migrations and seeders
 php artisan migrate --seed
 
-# 5. تشغيل الخادم المحلي
+# 5. Start local development server
 php artisan serve
 ```
 
 ---
 
-## ☁️ الاستضافة السحابية (Deployment)
+## ☁️ Deployment
 
-المشروع مهيأ للرفع المباشر على **Railway** بفضل:
+The project is fully configured for direct deployment on **Railway** via:
 
-- **`nixpacks.toml`** — يبني البيئة البرمجية تلقائياً ويثبت `php82` وامتداداتها مثل `pdo_mysql` مع تحسين كاش الأداء في بيئة الإنتاج.
-- **`railway-entrypoint.sh`** — يُنشئ الكاش، يحسّن المسارات عبر `route:cache`، ويحمي مجلدات التخزين تلقائياً عند كل Deployment دون أي تدخل يدوي.
+- **`nixpacks.toml`** — Automatically builds the runtime environment, installs `php82` and extensions like `pdo_mysql`, and enables production performance caching.
+- **`railway-entrypoint.sh`** — Generates cache, optimizes routes via `route:cache`, and secures storage directories automatically on every deployment without manual intervention.
