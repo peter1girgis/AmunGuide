@@ -36,7 +36,7 @@ class StorePaymentRequest extends FormRequest
                 'integer',
                 'min:1',
                 ],
-            'receipt_image'  => 'nullable|string|max:255',
+            'receipt_image'  => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'transaction_id' => 'nullable|string|max:100',
             'payment_method' => 'nullable|string|max:50',
             'notes'          => 'nullable|string|max:500',
