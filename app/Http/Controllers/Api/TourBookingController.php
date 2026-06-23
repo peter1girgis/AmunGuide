@@ -407,10 +407,10 @@ class TourBookingController extends Controller
             if (!$booking->hasApprovedPayment()) {
                 $booking->approve();
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Booking approved successfully without payment approved',
-                    'data' => TourBookingResource::make($booking),
-                ]);
+                    'success' => false,
+                    'message' => 'Cannot approve booking without an approved payment',
+                    'error' => 'no_approved_payment',
+                ], 400);
             }
 
             $booking->approve();

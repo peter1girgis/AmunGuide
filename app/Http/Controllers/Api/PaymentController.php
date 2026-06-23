@@ -263,6 +263,10 @@ class PaymentController extends Controller
             // if ($request->hasFile('receipt_image')) {
             //     $receiptPath = $request->file('receipt_image')->store('payments/receipts', 'public');
             // }
+            if ($request->hasFile('receipt_image')) {
+                $path = $request->file('receipt_image')->store('payments/receipts', 'public');
+                $validated['receipt_image'] = $path;
+            }
 
             // --- Add new fields to function ---
             $payment = Payments::createPayment(
@@ -388,7 +392,7 @@ class PaymentController extends Controller
             // Check authorization
             if (
                 $user->role !== 'admin' &&
-                ($payment->payer_id !== $user->id || $payment->status !== 'pending' || $payment->status !== 'rejected')
+                ($payment->payer_id !== $user->id || ($payment->status !== 'pending' && $payment->status !== 'rejected'))
             ) {
                 return response()->json([
                     'success' => false,
