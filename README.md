@@ -7,6 +7,8 @@
 [![Database](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![Deployment](https://img.shields.io/badge/Railway-Deployed-131415?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app)
 
+**🌐 Base URL:** `http://amun-guide.up.railway.app`
+
 **AmunGuide API** هو نظام خلفي متطور ومستقل (Decoupled RESTful API) مبني باستخدام إطار العمل **Laravel 10** ليكون النواة البرمجية لمنصة سياحية متكاملة في مصر. يدعم النظام تطبيقات الويب والهواتف الذكية عبر توفير بيئة مرنة وآمنة وقابلة للتوسع لإدارة المزارات السياحية، الجولات، حجوزات الأفواج، أنظمة الدفع الرقمية، ونظام متكامل مدعوم بالذكاء الاصطناعي (AI) لتخطيط الرحلات تلقائياً وتحليل سلوك المستخدمين.
 
 ---
