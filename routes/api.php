@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\RagMessageController;
 use App\Http\Controllers\Api\TourController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\PlaceMediaController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -1378,6 +1379,123 @@ Route::prefix('v1')->group(function () {
         Route::get('conversations/{id}/images', [ConversationController::class, 'getImages'])
             ->name('conversations.images.index')
             ->where(['id' => '[0-9]+']);
+    });
+
+
+
+    // -------------------------------------------------------------------------
+    // PLACE MEDIA ROUTES
+    // -------------------------------------------------------------------------
+
+    /*
+    |----------------------------------------------------------------------
+    | GET /api/v1/places/{place}/media
+    |----------------------------------------------------------------------
+    | Description : List all media files for a specific place.
+    |
+    | Method      : GET
+    | URL         : /api/v1/places/{place}/media
+    | Auth        : None (public)
+    |
+    | URL Params:
+    |   place (integer) – the Place's primary key
+    |
+    | Success Response (200):
+    |   {
+    |     "success": true,
+    |     "place": { "id": 1, "title": "..." },
+    |     "data": [ PlaceMediaResource, ... ],
+    |     "total": 3
+    |   }
+    |
+    | Not Found (404):
+    |   { "message": "Record not found." }
+    |----------------------------------------------------------------------
+    */
+    Route::get('places/{place}/media', [PlaceMediaController::class, 'index'])
+        ->name('places.media.index')
+        ->where(['place' => '[0-9]+'])
+        ->missing(function () {
+            return response()->json(['message' => 'Record not found.'], 404);
+        });
+
+
+    // =========================================================================
+    // PROTECTED PLACE MEDIA ROUTES (Admin Only)
+    // =========================================================================
+    Route::middleware('auth:sanctum')->group(function () {
+
+        /*
+        |----------------------------------------------------------------------
+        | POST /api/v1/places/{place}/media
+        |----------------------------------------------------------------------
+        | Description : Upload one or more media files for a place.
+        |               Send as multipart/form-data.
+        |
+        | Method      : POST
+        | URL         : /api/v1/places/{place}/media
+        | Auth        : Required (Bearer Token — admin role)
+        |
+        | URL Params:
+        |   place (integer) – the Place's primary key
+        |
+        | Request Body (multipart/form-data):
+        |   files[]  – required | array (1–10 files) | jpg,jpeg,png,webp,mp4,glb,gltf | max 20MB each
+        |   type     – optional | string | in: image, video, model3d (default: image)
+        |
+        | Success Response (201):
+        |   {
+        |     "success": true,
+        |     "message": "3 file(s) uploaded successfully.",
+        |     "data": [ PlaceMediaResource, ... ]
+        |   }
+        |
+        | Forbidden (403):
+        |   { "success": false, "message": "Unauthorized. Admin access required." }
+        |
+        | Validation Error (422):
+        |   { "message": "...", "errors": { ... } }
+        |----------------------------------------------------------------------
+        */
+        Route::post('places/{place}/media', [PlaceMediaController::class, 'store'])
+            ->name('places.media.store')
+            ->where(['place' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found.'], 404);
+            });
+
+
+        /*
+        |----------------------------------------------------------------------
+        | DELETE /api/v1/places/{place}/media/{media}
+        |----------------------------------------------------------------------
+        | Description : Delete a specific media file from a place.
+        |               Removes the file from storage and the DB record.
+        |
+        | Method      : DELETE
+        | URL         : /api/v1/places/{place}/media/{media}
+        | Auth        : Required (Bearer Token — admin role)
+        |
+        | URL Params:
+        |   place (integer) – the Place's primary key
+        |   media (integer) – the PlaceMedia's primary key
+        |
+        | Success Response (200):
+        |   { "success": true, "message": "Media deleted successfully." }
+        |
+        | Forbidden (403):
+        |   { "success": false, "message": "Unauthorized. Admin access required." }
+        |
+        | Not Found (404):
+        |   { "success": false, "message": "This media does not belong to the specified place." }
+        |----------------------------------------------------------------------
+        */
+        Route::delete('places/{place}/media/{media}', [PlaceMediaController::class, 'destroy'])
+            ->name('places.media.destroy')
+            ->where(['place' => '[0-9]+', 'media' => '[0-9]+'])
+            ->missing(function () {
+                return response()->json(['message' => 'Record not found.'], 404);
+            });
     });
 
 }); // end prefix('v1') — Chatbot Conversations
