@@ -20,9 +20,9 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-    'https://amun-guide-web.vercel.app',
-    'http://localhost:8080',
-    //'*'
+        '*',
+        'https://amun-guide-web.vercel.app',
+        'http://localhost:8080',
     ],
 
     'allowed_origins_patterns' => [],
