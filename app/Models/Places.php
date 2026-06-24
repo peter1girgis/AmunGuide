@@ -29,7 +29,7 @@ class Places extends Model
      */
     public function media()
     {
-        return $this->hasMany(Place_media::class);
+        return $this->hasMany(Place_media::class, 'place_id', 'id');
     }
 
     /**

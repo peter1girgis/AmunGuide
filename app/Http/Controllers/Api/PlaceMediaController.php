@@ -29,7 +29,7 @@ class PlaceMediaController extends Controller
     {
         try {
             $media = $place->media()->latest()->get();
-            dd($media);
+            // dd($media);
 
             return response()->json([
                 'success' => true,
