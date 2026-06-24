@@ -92,6 +92,7 @@ class PlaceMediaController extends Controller
                 'success' => true,
                 'message' => count($uploaded) . ' file(s) uploaded successfully.',
                 'data'    => $uploaded,
+                'all media' => PlaceMediaResource::collection($place->media()->latest()->get()),
             ], 201);
 
         } catch (\Throwable $e) {

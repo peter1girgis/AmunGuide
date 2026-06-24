@@ -11,7 +11,7 @@ class StorePlaceMediaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth('sanctum')->check();
+        return auth('sanctum')->check() && auth('sanctum')->user()->role === 'admin';
     }
 
     /**

@@ -1498,7 +1498,7 @@ Route::prefix('v1')->group(function () {
             });
     });
 
-}); // end prefix('v1') — Chatbot Conversations
+}); // end prefix('v1') — Chatbot Conversations & places media
 
 
 /*
