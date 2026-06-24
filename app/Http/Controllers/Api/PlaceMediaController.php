@@ -49,7 +49,8 @@ class PlaceMediaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch place media.',
+                'message' => $e->getMessage(), // هيعرضلك الخطأ الحقيقي هنا
+                'trace'   => $e->getTrace()
             ], 500);
         }
     }
