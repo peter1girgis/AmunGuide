@@ -37,7 +37,7 @@ class PlaceMediaController extends Controller
                     'id'    => $place->id,
                     'title' => $place->title,
                 ],
-                'data'  => PlaceMediaResource::collection($media),
+                'data'  => $media ? PlaceMediaResource::collection($media) : "place have not any media",
                 'total' => $media->count(),
             ]);
 
