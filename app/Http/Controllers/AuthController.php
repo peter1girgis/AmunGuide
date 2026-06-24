@@ -41,7 +41,7 @@ class AuthController extends Controller
             'name'          => 'required|string|max:255',
             'email'         => 'required|email|max:255|unique:users,email',
             'password'      => 'required|string|min:8|max:255',
-            'profile_image' => 'nullable|string|max:255',
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'role'          => 'required|in:tourist,guide', // بنحدد الاختيارات المتاحة
 
             // الحقول دي هتبقى إجبارية فقط لو الـ role هو guide
@@ -50,16 +50,16 @@ class AuthController extends Controller
             'national_id'   => 'required_if:role,guide|nullable|string|max:255',
         ]);
 
-        // $path = null;
-        // if ($request->hasFile('profile_image')) {
-        //     $path = $request->file('profile_image')->store('profiles', 'public');
-        // }
+        $path = null;
+        if ($request->hasFile('profile_image')) {
+            $path = $request->file('profile_image')->store('profiles', 'public');
+        }
 
         $user = User::create([
             'name'          => $validated['name'],
             'email'         => $validated['email'],
             'password'      => Hash::make($validated['password']),
-            'profile_image' => $validated['profile_image'] ?? null,
+            'profile_image' => $path,
             'role'          => $validated['role'] ?? 'tourist', // إضافة الـ role هنا
             'phone'         => $validated['phone'] ?? null,
             'address'       => $validated['address'] ?? null,
