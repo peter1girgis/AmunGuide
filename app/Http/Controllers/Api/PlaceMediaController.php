@@ -29,6 +29,7 @@ class PlaceMediaController extends Controller
     {
         try {
             $media = $place->media()->latest()->get();
+            dd($media);
 
             return response()->json([
                 'success' => true,
@@ -49,7 +50,7 @@ class PlaceMediaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch place media.',
-            ], 204);
+            ], 500);
         }
     }
 
