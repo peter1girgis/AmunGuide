@@ -49,7 +49,7 @@ class PlaceMediaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch place media.',
-            ], 500);
+            ], 204);
         }
     }
 
