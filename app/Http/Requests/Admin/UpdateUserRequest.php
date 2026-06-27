@@ -42,7 +42,13 @@ class UpdateUserRequest extends FormRequest
             'address'    => ['sometimes', 'nullable', 'string', 'max:500'],
             'national_id'=> ['sometimes', 'nullable', 'string', 'max:50'],
 
-            'profile_image' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'profile_image' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'mimes:jpeg,png,jpg,gif,svg',
+                'max:2048', // Max size in kilobytes (2MB)
+            ],
 
             'role'       => ['sometimes', 'required', Rule::in(['admin', 'tourist', 'guide'])],
 
@@ -61,6 +67,9 @@ class UpdateUserRequest extends FormRequest
             'email.unique'    => 'This email address is already taken by another user.',
             'role.in'         => 'Role must be one of: admin, tourist, guide.',
             'password.min'    => 'Password must be at least 8 characters long.',
+            'profile_image.image' => 'The profile image must be a valid image file.',
+            'profile_image.mimes' => 'The profile image must be a file of type: jpeg, png, jpg, gif, svg.',
+            'profile_image.max' => 'The profile image may not be greater than 2048 kilobytes.',
         ];
     }
 }

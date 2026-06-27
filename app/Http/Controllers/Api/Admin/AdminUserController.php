@@ -67,6 +67,11 @@ class AdminUserController extends Controller
             // Remove password key entirely so it is not touched in the DB
             unset($validated['password']);
         }
+        // Handle profile image upload
+        if (isset($validated['profile_image'])) {
+            $imagePath = $validated['profile_image']->store('profile_images', 'public');
+            $validated['profile_image'] = $imagePath;
+        }
 
         $user->update($validated);
 
