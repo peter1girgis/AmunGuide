@@ -13,6 +13,24 @@
 
 ---
 
+## 👨‍💻 My Individual Contribution
+
+AmunGuide was developed as a collaborative graduation project. My individual responsibility was the design and implementation of the backend API using Laravel 10 and MySQL.
+
+My contributions included:
+
+- **Backend Architecture:** Designing and implementing the RESTful API architecture and organizing the application into modular controllers, models, middleware, form requests, and API resources.
+- **Database Design:** Designing and implementing the relational database schema, including migrations, relationships, polymorphic relations, and indexing.
+- **Authentication & Authorization:** Implementing authentication using Laravel Sanctum and role-based access control for tourists, guides, and administrators.
+- **Core Business Logic:** Developing API endpoints for tourist places, tours, bookings, trip planning, payments records, comments, and likes.
+- **AI Integration Support:** Implementing conversation management and a structured data retrieval endpoint to provide user behavior and preferences to the AI-powered recommendation system.
+- **Analytics:** Developing activity tracking and analytical endpoints for user behavior insights and administrative statistics.
+- **Deployment:** Configuring and deploying the backend API on Railway.
+
+The frontend and other project components were developed collaboratively by the graduation project team.
+
+---
+
 ## 🚀 Core Features
 
 ### 1. Multi-Role Authentication & Identity Management
@@ -180,3 +198,5 @@ The project is fully configured for direct deployment on **Railway** via:
 
 - **`nixpacks.toml`** — Automatically builds the runtime environment, installs `php82` and extensions like `pdo_mysql`, and enables production performance caching.
 - **`railway-entrypoint.sh`** — Generates cache, optimizes routes via `route:cache`, and secures storage directories automatically on every deployment without manual intervention.
+
+
